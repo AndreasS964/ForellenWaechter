@@ -1,6 +1,6 @@
 # 🐟 ForellenWächter (Trout Guardian)
 
-Ein ESP32-basiertes IoT-Monitoring-System für die Forellenaufzucht von Lucas Haug.
+Ein ESP32-basiertes IoT-Monitoring-System für die Forellenaufzucht von Lucas.
 
 ![Version](https://img.shields.io/badge/version-1.2-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
