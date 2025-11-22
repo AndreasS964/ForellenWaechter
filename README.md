@@ -8,7 +8,7 @@ Ein ESP32-basiertes IoT-Monitoring-System für die Forellenaufzucht von Lucas.
 
 ## 📋 Übersicht
 
-ForellenWächter ist ein umfassendes Überwachungssystem für Forellenzuchtanlagen, das kritische Wasserparameter und Umgebungsbedingungen in Echtzeit erfasst. Das System wurde speziell für die natürliche Waldumgebung mit Tuffstein-Kanälen entwickelt und ermöglicht eine proaktive Bewirtschaftung ohne ständige physische Anwesenheit.
+ForellenWächter ist ein umfassendes Überwachungssystem für Forellenzuchtanlagen, das kritische Wasserparameter und Umgebungsbedingungen in Echtzeit erfasst. Das System wurde speziell entwickelt und ermöglicht eine proaktive Bewirtschaftung ohne ständige physische Anwesenheit.
 
 ### Hauptfunktionen
 
@@ -18,7 +18,7 @@ ForellenWächter ist ein umfassendes Überwachungssystem für Forellenzuchtanlag
 - 🌐 **Web-Dashboard** optimiert für Mobile & Desktop
 - 🔄 **Automatische Belüftungssteuerung**
 - 📡 **WiFi-Konnektivität** mit Access Point Fallback
-- 🎨 **Lucas Haug Branding** mit professionellem Design
+  
 
 ## 🎯 Überwachte Parameter
 
@@ -284,16 +284,11 @@ Dieses Projekt ist unter der MIT-Lizenz lizenziert - siehe [LICENSE](LICENSE) Da
 
 ## 👤 Autor
 
-**Andreas**
-- Entwickelt für Lucas Haug Forellenzucht
-- GitHub: [@dein-username](https://github.com/dein-username)
+**Andreas Sika**
+- Entwickelt für Lucas Forellenzucht
 
-## 🙏 Danksagungen
 
-- Lucas Haug für die Anforderungen und Tests
-- ESP32 Community
-- Arduino Community
-- Chart.js Team
+
 
 ## 📞 Support
 
@@ -308,4 +303,3 @@ Bei Fragen oder Problemen:
 **Letztes Update**: November 2024  
 **Status**: Production Ready (Hardware-Integration läuft)
 
-🐟 *Entwickelt mit ❤️ für nachhaltige Aquakultur*
