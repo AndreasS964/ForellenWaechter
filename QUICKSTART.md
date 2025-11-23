@@ -1,6 +1,8 @@
-# 🚀 Quick Start Guide - ForellenWächter
+# 🚀 Quick Start Guide - ForellenWächter v2.0
 
 ## In 10 Minuten einsatzbereit!
+
+**Neu in v2.0:** Modulare Struktur mit 5 Dateien + Off-Grid Optimierung
 
 ### 1️⃣ Hardware (5 Minuten)
 
@@ -33,17 +35,42 @@ ESP32 ──────► USB-Kabel ──────► Computer
 - Tools → Manage Libraries → Installieren:
   - `OneWire`
   - `DallasTemperature`
-  - `ArduinoJson`
+  - `WebSocketsServer` (by Markus Sattler)
+  - `PubSubClient` (optional, für MQTT)
+
+**Projekt-Dateien (NEU in v2.0):**
+```
+Alle 5 Dateien in einen Ordner:
+├── ForellenWaechter_v2.0.ino
+├── config.h
+├── power_management.h
+├── sensors.h
+└── webserver.h
+```
 
 ---
 
-### 3️⃣ Code hochladen (2 Minuten)
+### 3️⃣ Konfiguration & Upload (2 Minuten)
 
-1. `ForellenWaechter.ino` öffnen
-2. Board auswählen: **ESP32 Dev Module**
-3. Port auswählen (z.B. COM3 oder /dev/ttyUSB0)
-4. **Upload** klicken ⚡
-5. **Serial Monitor** öffnen (115200 baud)
+**Konfiguration anpassen:**
+1. `config.h` öffnen
+2. WiFi-Daten eintragen (optional):
+   ```cpp
+   const char* STA_SSID = "DeinWLAN";
+   const char* STA_PASSWORD = "DeinPasswort";
+   ```
+3. Passwort ändern (empfohlen):
+   ```cpp
+   const char* WEB_PASSWORD = "deinPasswort";
+   ```
+
+**Upload:**
+1. `ForellenWaechter_v2.0.ino` öffnen
+2. Board: **ESP32 Dev Module**
+3. Upload Speed: **921600**
+4. Flash Frequency: **80MHz** (wichtig für Energiesparen!)
+5. **Upload** klicken ⚡
+6. **Serial Monitor** öffnen (115200 baud)
 
 ---
 
@@ -66,10 +93,13 @@ ESP32 ──────► USB-Kabel ──────► Computer
 ## ✅ Erfolgskontrolle
 
 **Du solltest jetzt sehen:**
-- ✅ Dashboard lädt
+- ✅ Dashboard lädt (Dark Mode)
 - ✅ Temperaturen werden angezeigt
-- ✅ Charts erscheinen (nach 1 Minute)
+- ✅ Dark/Light Mode Toggle funktioniert (☀️ Button)
+- ✅ Live-Updates alle 2 Sekunden
+- ✅ 24h Statistiken (Min/Max/Avg)
 - ✅ Belüftungs-Button funktioniert
+- ✅ Connection Status (unten rechts) zeigt "Verbunden"
 
 ---
 
@@ -106,18 +136,28 @@ Relay-LED sollte leuchten
 
 ### Für Anfänger:
 1. ✅ Dashboard beobachten
-2. ✅ Sensoren ins Wasser hängen
-3. ✅ Temperaturen überwachen
+2. ✅ Dark/Light Mode ausprobieren
+3. ✅ Sensoren ins Wasser hängen
+4. ✅ 24h Statistiken beobachten
 
 ### Für Fortgeschrittene:
 1. 📁 SD-Karte für Logging hinzufügen
-2. 🎨 Dashboard-Design anpassen
-3. ⚙️ Schwellenwerte optimieren
+2. 🏠 MQTT für Home Assistant konfigurieren
+3. ⚙️ Schwellenwerte in `config.h` optimieren
+4. 📱 Als PWA auf Smartphone installieren
 
 ### Für Profis:
 1. 🔌 Alle Sensoren verkabeln (siehe WIRING.md)
 2. 🏗️ Gehäuse bauen (wasserdicht!)
-3. 🌐 Remote-Zugriff einrichten
+3. ☀️ Solar-Panel anschließen (Off-Grid)
+4. 🔄 OTA Updates über WiFi nutzen
+5. 🌐 Remote-Zugriff einrichten
+
+### Off-Grid Setup:
+1. 🔋 12V Batterie anschließen
+2. ☀️ Solar-Panel (50-100W) mit Laderegler
+3. 📊 Batteriespannung monitoren (optional GPIO36)
+4. ⚡ Power-Save-Modus testen
 
 ---
 
