@@ -1,6 +1,12 @@
 /*
- * ForellenWächter v2.0 - Sensor Management
+ * ForellenWächter v2.1 - Sensor Management
  * Optimierte Sensor-Auslesungen mit Fehlerbehandlung
+ *
+ * OPTIMIERUNGEN v2.1:
+ * - DS18B20 auf 9-bit (75% schneller: 375ms→94ms)
+ * - TDS Samples 30→15 (50% schneller)
+ * - Optional: DO-Sensor Support
+ * - Besseres Error-Handling
  */
 
 #ifndef SENSORS_H
@@ -11,6 +17,11 @@
 #include <DallasTemperature.h>
 #include "config.h"
 
+// Optionale Sensoren
+#if ENABLE_DO_SENSOR
+#include "do_sensor.h"
+#endif
+
 // Sensor-Datenstruktur
 struct SensorData {
     float waterTemp;
@@ -20,6 +31,11 @@ struct SensorData {
     bool waterLevel;
     unsigned long timestamp;
     bool valid;
+
+    #if ENABLE_DO_SENSOR
+    float dissolvedOxygen;    // mg/L
+    float doSaturation;       // %
+    #endif
 };
 
 // Sensor-Statistiken
@@ -39,6 +55,10 @@ private:
     SensorData currentData;
     bool sensorsInitialized;
 
+    #if ENABLE_DO_SENSOR
+    DOSensor* doSensor;
+    #endif
+
     // Statistiken (24h)
     SensorStats waterTempStats;
     SensorStats airTempStats;
@@ -49,31 +69,53 @@ private:
     int tempSensorErrors;
     int phSensorErrors;
     int tdsSensorErrors;
+    #if ENABLE_DO_SENSOR
+    int doSensorErrors;
+    #endif
 
     // Kalibrierungswerte (können zur Laufzeit geändert werden)
     float phNeutralVoltage;
     float phAcidVoltage;
     float tdsCalibrationFactor;
 
+    // Performance-Tracking
+    unsigned long lastReadDuration;
+    unsigned long totalReadTime;
+    int readCount;
+
 public:
     SensorManager() :
         oneWire(nullptr),
         tempSensors(nullptr),
         sensorsInitialized(false),
+        #if ENABLE_DO_SENSOR
+        doSensor(nullptr),
+        doSensorErrors(0),
+        #endif
         tempSensorErrors(0),
         phSensorErrors(0),
         tdsSensorErrors(0),
         phNeutralVoltage(PH_NEUTRAL_VOLTAGE),
         phAcidVoltage(PH_ACID_VOLTAGE),
-        tdsCalibrationFactor(1.0) {
+        tdsCalibrationFactor(1.0),
+        lastReadDuration(0),
+        totalReadTime(0),
+        readCount(0) {
 
         currentData.valid = false;
+        #if ENABLE_DO_SENSOR
+        currentData.dissolvedOxygen = 0.0;
+        currentData.doSaturation = 0.0;
+        #endif
         resetStats();
     }
 
     ~SensorManager() {
         if (tempSensors) delete tempSensors;
         if (oneWire) delete oneWire;
+        #if ENABLE_DO_SENSOR
+        if (doSensor) delete doSensor;
+        #endif
     }
 
     // Initialisierung
@@ -96,11 +138,16 @@ public:
             tempSensors->getAddress(waterThermometer, 0);
             tempSensors->getAddress(airThermometer, 1);
 
-            // Auflösung setzen (9-12 bit, höher = genauer aber langsamer)
-            tempSensors->setResolution(waterThermometer, 11);  // 11 bit für Balance
-            tempSensors->setResolution(airThermometer, 11);
+            // OPTIMIERT: 9-bit Resolution (94ms statt 375ms bei 11-bit)
+            // Genauigkeit: ±0.5°C (ausreichend für Forellenzucht!)
+            tempSensors->setResolution(waterThermometer, DS18B20_RESOLUTION);
+            tempSensors->setResolution(airThermometer, DS18B20_RESOLUTION);
 
-            Serial.println("✓ Temperatursensoren konfiguriert (11-bit)");
+            Serial.printf("✓ Temperatursensoren konfiguriert (%d-bit)\n", DS18B20_RESOLUTION);
+            Serial.printf("  Conversion-Zeit: %d ms\n",
+                         DS18B20_RESOLUTION == 9 ? 94 :
+                         DS18B20_RESOLUTION == 10 ? 188 :
+                         DS18B20_RESOLUTION == 11 ? 375 : 750);
             sensorsInitialized = true;
         } else {
             Serial.println("⚠ WARNUNG: Nicht genug Temperatursensoren gefunden!");
@@ -112,6 +159,17 @@ public:
         analogSetAttenuation(ADC_11db);  // 0-3.3V
 
         Serial.println("✓ ADC konfiguriert (12-bit, 0-3.3V)");
+
+        // Optional: DO-Sensor
+        #if ENABLE_DO_SENSOR
+        doSensor = new DOSensor();
+        if (doSensor->begin()) {
+            Serial.println("✓ DO-Sensor aktiviert");
+        } else {
+            Serial.println("ℹ DO-Sensor nicht verfügbar (optional)");
+        }
+        #endif
+
         Serial.println("✓ Sensor-Manager initialisiert\n");
 
         return sensorsInitialized;
@@ -123,6 +181,8 @@ public:
             currentData.valid = false;
             return false;
         }
+
+        unsigned long startTime = millis();
 
         // Temperatur
         if (!readTemperatures()) {
@@ -142,9 +202,34 @@ public:
         // Wasserstand
         currentData.waterLevel = readWaterLevel();
 
+        // Optional: DO-Sensor (mit Temperaturkompensation!)
+        #if ENABLE_DO_SENSOR
+        if (doSensor && doSensor->isInitialized()) {
+            if (doSensor->read(currentData.waterTemp)) {
+                currentData.dissolvedOxygen = doSensor->getDO();
+                currentData.doSaturation = doSensor->getSaturation();
+            } else {
+                doSensorErrors++;
+            }
+        }
+        #endif
+
         // Timestamp
         currentData.timestamp = millis();
         currentData.valid = true;
+
+        // Performance-Tracking
+        lastReadDuration = millis() - startTime;
+        totalReadTime += lastReadDuration;
+        readCount++;
+
+        #if DEBUG_PERFORMANCE
+        if (readCount % 100 == 0) {
+            Serial.printf("Sensor Read Performance: %lu ms (Avg: %lu ms)\n",
+                         lastReadDuration,
+                         totalReadTime / readCount);
+        }
+        #endif
 
         // Statistiken aktualisieren
         updateStats();
@@ -328,6 +413,20 @@ public:
         Serial.printf("Temperatur-Fehler: %d\n", tempSensorErrors);
         Serial.printf("pH-Fehler: %d\n", phSensorErrors);
         Serial.printf("TDS-Fehler: %d\n", tdsSensorErrors);
+        #if ENABLE_DO_SENSOR
+        Serial.printf("DO-Fehler: %d\n", doSensorErrors);
+        #endif
+        Serial.println();
+    }
+
+    // Performance-Statistiken
+    void printPerformanceStats() {
+        Serial.println("\n=== Sensor Performance ===");
+        Serial.printf("Letzter Read: %lu ms\n", lastReadDuration);
+        if (readCount > 0) {
+            Serial.printf("Durchschnitt: %lu ms\n", totalReadTime / readCount);
+            Serial.printf("Reads Total: %d\n", readCount);
+        }
         Serial.println();
     }
 
@@ -339,8 +438,22 @@ public:
         Serial.printf("pH-Wert: %.2f\n", currentData.pH);
         Serial.printf("TDS: %.0f ppm\n", currentData.tds);
         Serial.printf("Wasserstand: %s\n", currentData.waterLevel ? "OK" : "NIEDRIG");
+
+        #if ENABLE_DO_SENSOR
+        if (doSensor && doSensor->isInitialized()) {
+            Serial.printf("DO: %.2f mg/L (%.1f%%)\n",
+                         currentData.dissolvedOxygen,
+                         currentData.doSaturation);
+        }
+        #endif
+
         Serial.println();
     }
+
+    // DO-Sensor Zugriff (wenn aktiviert)
+    #if ENABLE_DO_SENSOR
+    DOSensor* getDOSensor() { return doSensor; }
+    #endif
 };
 
 #endif // SENSORS_H

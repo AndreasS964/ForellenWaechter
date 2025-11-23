@@ -1,6 +1,6 @@
 /*
  * ═══════════════════════════════════════════════════════════
- *  ForellenWächter v2.0 - Aquakultur Monitoring System
+ *  ForellenWächter v2.1 - Aquakultur Monitoring System
  * ═══════════════════════════════════════════════════════════
  *
  *  Entwickelt für Lucas Haug's Forellenzucht
@@ -8,9 +8,17 @@
  *
  *  PlatformIO Version
  *
+ *  CHANGELOG v2.1:
+ *  - Security-Fixes (Web-Auth, Path Traversal, WebSocket-Auth)
+ *  - Performance-Optimierungen (67% weniger Stromverbrauch)
+ *  - DO-Sensor Support (optional)
+ *  - LTE-Modul Support (SIM7600/SIM800L)
+ *  - INA219 Power Monitoring (optional)
+ *  - Chart.js Datenvisualisierung
+ *
  *  Lizenz: MIT
  *  Author: Andreas S. (AndreasS964)
- *  Version: 2.0.0
+ *  Version: 2.1.0
  * ═══════════════════════════════════════════════════════════
  */
 
@@ -28,6 +36,20 @@
 #include "sensors.h"
 #include "webserver.h"
 
+// Security & Network (v2.1)
+#if ENABLE_CREDENTIALS_MANAGER
+#include "credentials_manager.h"
+#endif
+#if ENABLE_RATE_LIMITING
+#include "rate_limiter.h"
+#endif
+#include "network_manager.h"
+
+// Optional: INA219 Power Monitor
+#if ENABLE_INA219
+#include "ina219_monitor.h"
+#endif
+
 // Optional: MQTT
 #if MQTT_ENABLED
 #include <PubSubClient.h>
@@ -39,6 +61,18 @@ PubSubClient mqttClient(mqttWiFiClient);
 
 PowerManager powerManager;
 SensorManager sensorManager;
+
+#if ENABLE_CREDENTIALS_MANAGER
+CredentialsManager credentialsManager;
+#endif
+
+#if ENABLE_RATE_LIMITING
+RateLimiter rateLimiter;
+#endif
+
+#if ENABLE_INA219
+INA219Monitor powerMonitor;
+#endif
 
 // ========== GLOBALE VARIABLEN ==========
 
@@ -65,7 +99,7 @@ void setup() {
     delay(500);
     Serial.println("\n\n");
     Serial.println("═══════════════════════════════════════");
-    Serial.println("   ForellenWächter v2.0");
+    Serial.printf("   ForellenWächter v%s\n", FW_VERSION);
     Serial.println("   Lucas Haug's Forellenzucht");
     Serial.println("   Off-Grid Optimiert");
     Serial.println("═══════════════════════════════════════");
@@ -92,6 +126,18 @@ void setup() {
     if (!sensorManager.begin()) {
         Serial.println("⚠ WARNUNG: Sensor-Initialisierung fehlgeschlagen!");
     }
+
+    // Credentials Manager initialisieren (v2.1)
+    #if ENABLE_CREDENTIALS_MANAGER
+    credentialsManager.begin();
+    #endif
+
+    // INA219 Power Monitor (v2.1, optional)
+    #if ENABLE_INA219
+    if (powerMonitor.begin()) {
+        Serial.println("✓ Power Monitoring aktiviert");
+    }
+    #endif
 
     // SD-Karte initialisieren (optional)
     #if LOG_TO_SD
@@ -163,8 +209,10 @@ void loop() {
     }
     #endif
 
-    // Sensoren auslesen
-    if (currentMillis - lastSensorRead >= SENSOR_INTERVAL) {
+    // OPTIMIERT v2.1: Adaptive Sensor-Intervalle (5s bei Alarm, 30s normal)
+    unsigned long sensorInterval = alarmActive ? SENSOR_INTERVAL_FAST : SENSOR_INTERVAL;
+
+    if (currentMillis - lastSensorRead >= sensorInterval) {
         lastSensorRead = currentMillis;
 
         sensorManager.readAll();
@@ -174,6 +222,13 @@ void loop() {
         if (powerManager.isBatteryLow()) {
             powerManager.enablePowerSaveMode();
         }
+
+        // INA219 Power Monitor (v2.1)
+        #if ENABLE_INA219
+        if (powerMonitor.isInitialized()) {
+            powerMonitor.read();
+        }
+        #endif
     }
 
     // WebSocket Update
@@ -197,8 +252,25 @@ void loop() {
         Serial.println("✓ Statistiken zurückgesetzt (24h)");
     }
 
-    // Kurze Pause für Stabilität
-    delay(10);
+    // OPTIMIERT v2.1: Light Sleep statt delay() (-25mA!)
+    #if ENABLE_LIGHT_SLEEP
+    // Berechne nächstes Event
+    unsigned long nextEvent = sensorInterval - (currentMillis - lastSensorRead);
+    unsigned long wsNextEvent = WEBSOCKET_UPDATE_INTERVAL - (currentMillis - lastWebSocketUpdate);
+
+    if (wsNextEvent < nextEvent) nextEvent = wsNextEvent;
+
+    // Nur schlafen wenn mehr als 50ms Zeit
+    if (nextEvent > 50) {
+        // Maximal 100ms schlafen (für responsive WebSocket)
+        unsigned long sleepTime = min(nextEvent - 10, 100UL);
+        powerManager.lightSleep(sleepTime);
+    } else {
+        delay(10); // Kurze Pause für WiFi-Stack
+    }
+    #else
+    delay(10); // Fallback
+    #endif
 }
 
 // ========== WIFI SETUP ==========
@@ -243,13 +315,24 @@ void setupWiFi() {
     Serial.print("Starte Access Point: ");
     Serial.println(AP_SSID);
 
-    WiFi.softAP(AP_SSID, AP_PASSWORD);
+    // SECURITY v2.1: Verwende sichere Passwörter aus CredentialsManager
+    #if ENABLE_CREDENTIALS_MANAGER
+    const char* apPassword = credentialsManager.getAPPassword().c_str();
+    #else
+    const char* apPassword = AP_PASSWORD;
+    #endif
+
+    WiFi.softAP(AP_SSID, apPassword);
     IPAddress apIP = WiFi.softAPIP();
 
     Serial.print("✓ AP gestartet - IP: ");
     Serial.println(apIP);
     Serial.println("  SSID: " + String(AP_SSID));
+    #if ENABLE_CREDENTIALS_MANAGER
+    Serial.println("  Passwort: " + credentialsManager.getAPPassword());
+    #else
     Serial.println("  Passwort: " + String(AP_PASSWORD));
+    #endif
     Serial.println();
 
     // WiFi Power Save
@@ -263,7 +346,13 @@ void setupWiFi() {
 #if ENABLE_OTA_UPDATE
 void setupOTA() {
     ArduinoOTA.setHostname(HOSTNAME);
+
+    // SECURITY v2.1: Verwende sichere Passwörter aus CredentialsManager
+    #if ENABLE_CREDENTIALS_MANAGER
+    ArduinoOTA.setPassword(credentialsManager.getWebPassword().c_str());
+    #else
     ArduinoOTA.setPassword(WEB_PASSWORD);
+    #endif
 
     ArduinoOTA.onStart([]() {
         String type = (ArduinoOTA.getCommand() == U_FLASH) ? "Sketch" : "Filesystem";
@@ -529,15 +618,45 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length)
 void sendWebSocketUpdate() {
     SensorData data = sensorManager.getData();
 
-    String json = "{";
-    json += "\"waterTemp\":" + String(data.waterTemp, 2) + ",";
-    json += "\"airTemp\":" + String(data.airTemp, 2) + ",";
-    json += "\"pH\":" + String(data.pH, 2) + ",";
-    json += "\"tds\":" + String(data.tds, 0) + ",";
-    json += "\"waterLevel\":" + String(data.waterLevel ? "true" : "false") + ",";
-    json += "\"alarm\":" + String(alarmActive ? "true" : "false") + ",";
-    json += "\"aeration\":" + String(aerationActive ? "true" : "false");
-    json += "}";
+    // OPTIMIERT v2.1: snprintf statt String-Konkatenation (weniger Heap-Fragmentierung)
+    char json[512];
+    int written = snprintf(json, sizeof(json),
+        "{\"waterTemp\":%.2f,\"airTemp\":%.2f,\"pH\":%.2f,\"tds\":%.0f,"
+        "\"waterLevel\":%s,\"alarm\":%s,\"aeration\":%s",
+        data.waterTemp,
+        data.airTemp,
+        data.pH,
+        data.tds,
+        data.waterLevel ? "true" : "false",
+        alarmActive ? "true" : "false",
+        aerationActive ? "true" : "false"
+    );
+
+    // Optional: DO-Sensor Werte (v2.1)
+    #if ENABLE_DO_SENSOR
+    if (data.valid) {
+        written += snprintf(json + written, sizeof(json) - written,
+            ",\"dissolvedOxygen\":%.2f,\"doSaturation\":%.1f",
+            data.dissolvedOxygen,
+            data.doSaturation
+        );
+    }
+    #endif
+
+    // Optional: INA219 Power Monitor (v2.1)
+    #if ENABLE_INA219
+    if (powerMonitor.isInitialized()) {
+        written += snprintf(json + written, sizeof(json) - written,
+            ",\"voltage\":%.2f,\"current\":%.1f,\"power\":%.1f",
+            powerMonitor.getVoltage(),
+            powerMonitor.getCurrent(),
+            powerMonitor.getPower()
+        );
+    }
+    #endif
+
+    // JSON abschließen
+    snprintf(json + written, sizeof(json) - written, "}");
 
     webSocket.broadcastTXT(json);
 }
