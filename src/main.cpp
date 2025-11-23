@@ -29,6 +29,8 @@
 #include <SD.h>
 #include <SPI.h>
 #include <time.h>
+#include <WebServer.h>
+#include <WebSocketsServer.h>
 
 // Module einbinden
 #include "config.h"
@@ -58,6 +60,10 @@ PubSubClient mqttClient(mqttWiFiClient);
 #endif
 
 // ========== GLOBALE OBJEKTE ==========
+
+// Web Server & WebSocket
+WebServer server(WEB_SERVER_PORT);
+WebSocketsServer webSocket(WEBSOCKET_PORT);
 
 PowerManager powerManager;
 SensorManager sensorManager;

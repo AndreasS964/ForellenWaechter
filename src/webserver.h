@@ -40,9 +40,9 @@ extern SensorManager sensorManager;
 extern bool aerationActive;
 extern bool alarmActive;
 
-// Web Server & WebSocket
-WebServer server(WEB_SERVER_PORT);
-WebSocketsServer webSocket(WEBSOCKET_PORT);
+// Web Server & WebSocket (extern - defined in main.cpp)
+extern WebServer server;
+extern WebSocketsServer webSocket;
 
 // SECURITY v2.1: Enhanced Session Management
 struct ClientSession {
@@ -1075,6 +1075,10 @@ void setupWebServer() {
     server.begin();
     Serial.print("✓ Web Server gestartet auf Port ");
     Serial.println(WEB_SERVER_PORT);
+
+    // WebSocket Event Handler registrieren (extern defined in main.cpp)
+    extern void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length);
+    webSocket.onEvent(webSocketEvent);
 
     webSocket.begin();
     Serial.print("✓ WebSocket gestartet auf Port ");
