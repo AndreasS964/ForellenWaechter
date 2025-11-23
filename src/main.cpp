@@ -36,6 +36,7 @@
 #include "config.h"
 #include "power_management.h"
 #include "sensors.h"
+#include "chart_data.h"
 #include "webserver.h"
 
 // Security & Network (v2.1)
@@ -67,6 +68,7 @@ WebSocketsServer webSocket(WEBSOCKET_PORT);
 
 PowerManager powerManager;
 SensorManager sensorManager;
+ChartDataManager chartDataManager;
 
 #if ENABLE_CREDENTIALS_MANAGER
 CredentialsManager credentialsManager;
@@ -243,6 +245,15 @@ void loop() {
 
         sensorManager.readAll();
         checkAlarms();
+
+        // Chart-Daten speichern (alle 5 Minuten)
+        if (chartDataManager.shouldUpdate()) {
+            SensorData data = sensorManager.getData();
+            chartDataManager.addDataPoint(data.waterTemp, data.airTemp, data.pH, data.tds);
+            Serial.print("✓ Chart-Daten aktualisiert (");
+            Serial.print(chartDataManager.getDataCount());
+            Serial.println(" Punkte gespeichert)");
+        }
 
         // Batterie-Check (falls vorhanden)
         if (powerManager.isBatteryLow()) {
