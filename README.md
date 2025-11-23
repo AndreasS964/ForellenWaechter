@@ -417,11 +417,6 @@ Das Interface verwendet die Lucas Haug Farbpalette:
 | **Power Save Modus** | ~60mA | Bei niedriger Batterie |
 
 
-| Modus | Verbrauch | Beschreibung |
-|-------|-----------|--------------|
-| **Normal (v1.2)** | ~180mA | 240MHz, WiFi aktiv, BT an |
-| **Optimiert (v2.0)** | ~80mA | 80MHz, WiFi Power Save, BT aus |
-| **Power Save Modus** | ~60mA | Bei niedriger Batterie |
 
 ### Batterie-Laufzeit (Beispiel)
 
@@ -506,7 +501,7 @@ Dieses Projekt ist unter der MIT-Lizenz lizenziert - siehe [LICENSE](LICENSE) Da
 Bei Fragen oder Problemen:
 - GitHub Issues öffnen
 - Dokumentation lesen
-- Community Forum
+
 
 ---
 
