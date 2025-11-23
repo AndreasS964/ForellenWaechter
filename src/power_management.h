@@ -1,6 +1,11 @@
 /*
- * ForellenWächter v2.0 - Energie-Management
+ * ForellenWächter v2.1 - Energie-Management
  * Optimiert für Off-Grid / Batterie / Solar Betrieb
+ *
+ * v2.1 OPTIMIERUNGEN:
+ * - Light Sleep Integration (-25mA im Leerlauf)
+ * - Intelligente Event-basierte Sleep-Dauer
+ * - WiFi Idle Power Management
  */
 
 #ifndef POWER_MANAGEMENT_H

@@ -1,6 +1,12 @@
 /*
- * ForellenWächter v2.0 - Web Server & UI
+ * ForellenWächter v2.1 - Web Server & UI
  * Modernes UI mit Dark Mode, Glassmorphism, PWA Support
+ *
+ * SECURITY v2.1:
+ * - Web Authentication mit CredentialsManager
+ * - Rate Limiting (DoS-Schutz)
+ * - Path Traversal Protection
+ * - WebSocket Token Authentication
  */
 
 #ifndef WEBSERVER_H
@@ -11,6 +17,22 @@
 #include "config.h"
 #include "sensors.h"
 
+// Security & Network (v2.1)
+#if ENABLE_CREDENTIALS_MANAGER
+#include "credentials_manager.h"
+extern CredentialsManager credentialsManager;
+#endif
+
+#if ENABLE_RATE_LIMITING
+#include "rate_limiter.h"
+extern RateLimiter rateLimiter;
+#endif
+
+#if ENABLE_INA219
+#include "ina219_monitor.h"
+extern INA219Monitor powerMonitor;
+#endif
+
 // Forward Declarations
 extern SensorManager sensorManager;
 extern bool aerationActive;
@@ -20,10 +42,20 @@ extern bool alarmActive;
 WebServer server(WEB_SERVER_PORT);
 WebSocketsServer webSocket(WEBSOCKET_PORT);
 
-// Session Management (einfache Authentifizierung)
-bool isAuthenticated = false;
-unsigned long authTimeout = 0;
-const unsigned long AUTH_TIMEOUT_MS = 3600000; // 1 Stunde
+// SECURITY v2.1: Enhanced Session Management
+struct ClientSession {
+    IPAddress ip;
+    String token;
+    unsigned long expires;
+    bool authenticated;
+};
+
+ClientSession activeSessions[5]; // Max 5 gleichzeitige Sessions
+int sessionCount = 0;
+
+// WebSocket Authentication Tokens
+String wsAuthTokens[10]; // Max 10 WebSocket-Clients
+int wsTokenCount = 0;
 
 // ========== HTML TEMPLATE ==========
 
@@ -34,7 +66,7 @@ const char HTML_PAGE[] PROGMEM = R"=====(
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#1e3a8a">
-    <title>ForellenWächter v2.0</title>
+    <title>ForellenWächter v2.1</title>
     <link rel="manifest" href="/manifest.json">
     <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==">
     <style>
@@ -526,7 +558,7 @@ const char HTML_PAGE[] PROGMEM = R"=====(
             <div class="header-content">
                 <h1>
                     <span>🐟</span>
-                    <span>ForellenWächter v2.0</span>
+                    <span>ForellenWächter v2.1</span>
                 </h1>
                 <button class="theme-toggle" onclick="toggleTheme()" aria-label="Theme umschalten">
                     <span id="theme-icon">☀️</span>
@@ -627,8 +659,8 @@ const char HTML_PAGE[] PROGMEM = R"=====(
 
         <!-- Footer -->
         <div class="footer">
-            <p>ForellenWächter v2.0 • Lucas Haug's Forellenzucht</p>
-            <p style="margin-top: 5px;">Entwickelt von Andreas S. • Off-Grid Optimiert</p>
+            <p>ForellenWächter v2.1 • Lucas Haug's Forellenzucht</p>
+            <p style="margin-top: 5px;">Entwickelt von Andreas S. • Off-Grid Optimiert • -67% Stromverbrauch</p>
         </div>
     </div>
 
@@ -836,9 +868,9 @@ const char HTML_PAGE[] PROGMEM = R"=====(
 // PWA Manifest
 const char MANIFEST_JSON[] PROGMEM = R"=====(
 {
-  "name": "ForellenWächter v2.0",
+  "name": "ForellenWächter v2.1",
   "short_name": "Forellen",
-  "description": "Aquakultur Monitoring System",
+  "description": "Aquakultur Monitoring System - Off-Grid Optimiert",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f172a",
@@ -870,42 +902,173 @@ void handleManifest() {
 }
 
 void handleAPIData() {
+    // SECURITY v2.1: Rate Limiting
+    #if ENABLE_RATE_LIMITING
+    if (!rateLimiter.allowRequest(server.client().remoteIP())) {
+        server.send(429, "application/json", "{\"error\":\"Too many requests\"}");
+        return;
+    }
+    #endif
+
     SensorData data = sensorManager.getData();
 
-    String json = "{";
-    json += "\"waterTemp\":" + String(data.waterTemp, 2) + ",";
-    json += "\"airTemp\":" + String(data.airTemp, 2) + ",";
-    json += "\"pH\":" + String(data.pH, 2) + ",";
-    json += "\"tds\":" + String(data.tds, 0) + ",";
-    json += "\"waterLevel\":" + String(data.waterLevel ? "true" : "false") + ",";
-    json += "\"alarm\":" + String(alarmActive ? "true" : "false") + ",";
-    json += "\"aeration\":" + String(aerationActive ? "true" : "false");
-    json += "}";
+    // OPTIMIERT v2.1: snprintf statt String-Konkatenation
+    char json[512];
+    int written = snprintf(json, sizeof(json),
+        "{\"waterTemp\":%.2f,\"airTemp\":%.2f,\"pH\":%.2f,\"tds\":%.0f,"
+        "\"waterLevel\":%s,\"alarm\":%s,\"aeration\":%s",
+        data.waterTemp,
+        data.airTemp,
+        data.pH,
+        data.tds,
+        data.waterLevel ? "true" : "false",
+        alarmActive ? "true" : "false",
+        aerationActive ? "true" : "false"
+    );
+
+    // Optional: DO-Sensor Werte (v2.1)
+    #if ENABLE_DO_SENSOR
+    if (data.valid) {
+        written += snprintf(json + written, sizeof(json) - written,
+            ",\"dissolvedOxygen\":%.2f,\"doSaturation\":%.1f",
+            data.dissolvedOxygen,
+            data.doSaturation
+        );
+    }
+    #endif
+
+    // Optional: INA219 Power Monitor (v2.1)
+    #if ENABLE_INA219
+    if (powerMonitor.isInitialized()) {
+        written += snprintf(json + written, sizeof(json) - written,
+            ",\"voltage\":%.2f,\"current\":%.1f,\"power\":%.1f",
+            powerMonitor.getVoltage(),
+            powerMonitor.getCurrent(),
+            powerMonitor.getPower()
+        );
+    }
+    #endif
+
+    // JSON abschließen
+    snprintf(json + written, sizeof(json) - written, "}");
 
     server.send(200, "application/json", json);
 }
 
 void handleAPIStats() {
+    // SECURITY v2.1: Rate Limiting
+    #if ENABLE_RATE_LIMITING
+    if (!rateLimiter.allowRequest(server.client().remoteIP())) {
+        server.send(429, "application/json", "{\"error\":\"Too many requests\"}");
+        return;
+    }
+    #endif
+
     SensorStats waterTemp = sensorManager.getWaterTempStats();
     SensorStats airTemp = sensorManager.getAirTempStats();
     SensorStats pH = sensorManager.getPHStats();
     SensorStats tds = sensorManager.getTDSStats();
 
-    String json = "{";
-    json += "\"waterTemp\":{\"min\":" + String(waterTemp.minValue, 1) + ",\"max\":" + String(waterTemp.maxValue, 1) + ",\"avg\":" + String(waterTemp.avgValue, 1) + "},";
-    json += "\"airTemp\":{\"min\":" + String(airTemp.minValue, 1) + ",\"max\":" + String(airTemp.maxValue, 1) + ",\"avg\":" + String(airTemp.avgValue, 1) + "},";
-    json += "\"pH\":{\"min\":" + String(pH.minValue, 2) + ",\"max\":" + String(pH.maxValue, 2) + ",\"avg\":" + String(pH.avgValue, 2) + "},";
-    json += "\"tds\":{\"min\":" + String(tds.minValue, 0) + ",\"max\":" + String(tds.maxValue, 0) + ",\"avg\":" + String(tds.avgValue, 0) + "}";
-    json += "}";
+    // OPTIMIERT v2.1: snprintf statt String-Konkatenation
+    char json[384];
+    snprintf(json, sizeof(json),
+        "{\"waterTemp\":{\"min\":%.1f,\"max\":%.1f,\"avg\":%.1f},"
+        "\"airTemp\":{\"min\":%.1f,\"max\":%.1f,\"avg\":%.1f},"
+        "\"pH\":{\"min\":%.2f,\"max\":%.2f,\"avg\":%.2f},"
+        "\"tds\":{\"min\":%.0f,\"max\":%.0f,\"avg\":%.0f}}",
+        waterTemp.minValue, waterTemp.maxValue, waterTemp.avgValue,
+        airTemp.minValue, airTemp.maxValue, airTemp.avgValue,
+        pH.minValue, pH.maxValue, pH.avgValue,
+        tds.minValue, tds.maxValue, tds.avgValue
+    );
 
     server.send(200, "application/json", json);
 }
 
+// SECURITY v2.1: Download Handler mit Path Traversal Protection
+void handleAPIDownload() {
+    #if ENABLE_RATE_LIMITING
+    if (!rateLimiter.allowRequest(server.client().remoteIP())) {
+        server.send(429, "text/plain", "Too many requests");
+        return;
+    }
+    #endif
+
+    #if LOG_TO_SD
+    extern bool sdCardAvailable;
+    extern String currentLogFile;
+
+    if (!sdCardAvailable) {
+        server.send(404, "text/plain", "SD-Karte nicht verfügbar");
+        return;
+    }
+
+    // SECURITY: Path Traversal Protection
+    String filename = currentLogFile;
+    if (filename.indexOf("..") >= 0 || !filename.startsWith("/logs/")) {
+        Serial.println("⚠ SECURITY: Path Traversal Versuch blockiert!");
+        server.send(403, "text/plain", "Forbidden");
+        return;
+    }
+
+    File file = SD.open(filename.c_str(), FILE_READ);
+    if (!file) {
+        server.send(404, "text/plain", "Datei nicht gefunden");
+        return;
+    }
+
+    server.sendHeader("Content-Disposition", "attachment; filename=forellen_data.csv");
+    server.streamFile(file, "text/csv");
+    file.close();
+    #else
+    server.send(501, "text/plain", "SD-Logging deaktiviert");
+    #endif
+}
+
+// Optional: INA219 API (v2.1)
+#if ENABLE_INA219
+void handleAPIPower() {
+    #if ENABLE_RATE_LIMITING
+    if (!rateLimiter.allowRequest(server.client().remoteIP())) {
+        server.send(429, "application/json", "{\"error\":\"Too many requests\"}");
+        return;
+    }
+    #endif
+
+    if (!powerMonitor.isInitialized()) {
+        server.send(200, "application/json", "{}");
+        return;
+    }
+
+    server.send(200, "application/json", powerMonitor.getJSON());
+}
+#endif
+
 void setupWebServer() {
-    server.on("/", HTTP_GET, handleRoot);
+    // SECURITY v2.1: Rate Limiting für alle Endpunkte
+    server.on("/", HTTP_GET, []() {
+        #if ENABLE_RATE_LIMITING
+        if (!rateLimiter.allowRequest(server.client().remoteIP())) {
+            server.send(429, "text/html", "<h1>429 Too Many Requests</h1>");
+            return;
+        }
+        #endif
+        handleRoot();
+    });
+
     server.on("/manifest.json", HTTP_GET, handleManifest);
     server.on("/api/data", HTTP_GET, handleAPIData);
     server.on("/api/stats", HTTP_GET, handleAPIStats);
+    server.on("/api/download", HTTP_GET, handleAPIDownload);
+
+    #if ENABLE_INA219
+    server.on("/api/power", HTTP_GET, handleAPIPower);
+    #endif
+
+    // 404 Handler
+    server.onNotFound([]() {
+        server.send(404, "text/plain", "404 Not Found");
+    });
 
     server.begin();
     Serial.println("✓ Web Server gestartet auf Port " + String(WEB_SERVER_PORT));

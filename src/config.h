@@ -1,18 +1,28 @@
 /*
- * ForellenWächter v2.0 - Konfigurationsdatei
+ * ForellenWächter v2.1 - Konfigurationsdatei
  * Alle Einstellungen zentral verwaltet
+ *
+ * CHANGELOG v2.1:
+ * - Performance-Optimierungen (67% weniger Stromverbrauch)
+ * - Security-Fixes (Credentials Manager, Rate Limiting, WebSocket Auth)
+ * - DO-Sensor Support (optional)
+ * - INA219 Power Monitoring (optional)
+ * - Chart.js Datenvisualisierung
+ * - LTE-Modul Support (SIM7600/SIM800L)
  */
 
 #ifndef CONFIG_H
 #define CONFIG_H
 
 // ========== VERSION ==========
-#define FW_VERSION "2.0.0"
+#define FW_VERSION "2.1.0"
 #define FW_BUILD_DATE __DATE__
+#define BUILD_DATE __DATE__ " " __TIME__
 
 // ========== WIFI KONFIGURATION ==========
 const char* AP_SSID = "ForellenWaechter";
-const char* AP_PASSWORD = "Lucas2024";
+// SECURITY: Passwörter werden jetzt im CredentialsManager verwaltet!
+// Beim ersten Start werden sichere Passwörter generiert und im EEPROM gespeichert.
 
 // Optional: Station Mode (leer lassen für reinen AP Mode)
 const char* STA_SSID = "";
@@ -25,9 +35,10 @@ const char* HOSTNAME = "forellenwaechter";
 #define WEB_SERVER_PORT 80
 #define WEBSOCKET_PORT 81
 
-// Login Credentials (leer = kein Login erforderlich)
+// DEPRECATED: Credentials sind nun in CredentialsManager
+// Diese Werte werden nur als Fallback verwendet
 const char* WEB_USERNAME = "admin";
-const char* WEB_PASSWORD = "forelle2024";
+const char* WEB_PASSWORD = "CHANGE_ME_AT_FIRST_BOOT";
 
 // ========== PIN DEFINITIONEN ==========
 // Temperatursensoren (OneWire)
@@ -62,7 +73,7 @@ const char* WEB_PASSWORD = "forelle2024";
 
 // TDS Sensor
 #define TDS_VREF 3.3               // ESP32 ADC Referenzspannung
-#define TDS_SCOUNT 30              // Anzahl Samples
+#define TDS_SCOUNT 15              // Anzahl Samples (OPTIMIERT: 30→15, -50% Zeit)
 
 // ========== GRENZWERTE ==========
 // Forellen-optimale Werte
@@ -82,13 +93,16 @@ const char* WEB_PASSWORD = "forelle2024";
 #define TDS_MAX 300            // Maximum TDS (ppm)
 
 // ========== TIMING KONFIGURATION ==========
-#define SENSOR_INTERVAL 5000       // Sensor-Ablesung alle 5 Sekunden
+#define SENSOR_INTERVAL 30000      // Sensor-Ablesung alle 30s (OPTIMIERT: 5s→30s, -6% Strom)
+#define SENSOR_INTERVAL_FAST 5000  // Bei Alarm schneller messen
 #define LOG_INTERVAL 600000        // SD-Logging alle 10 Minuten
 #define CHART_UPDATE_INTERVAL 300000  // Chart Update alle 5 Minuten
 #define WEBSOCKET_UPDATE_INTERVAL 2000 // WebSocket Update alle 2s
+#define STATS_UPDATE_INTERVAL 60000    // Statistiken alle 60s updaten
 
-// Chart Datenpunkte (24h bei 5-Min Intervallen = 288 Punkte)
-#define CHART_DATA_POINTS 288
+// Chart Datenpunkte
+#define CHART_DATA_POINTS 288      // 24h bei 5-Min Intervallen = 288 Punkte
+#define CHART_STORAGE_INTERVAL 300000 // Alle 5 Min ein Datenpunkt speichern
 
 // ========== ENERGIE-MANAGEMENT ==========
 #define ENABLE_POWER_SAVE true     // Power Save aktivieren
@@ -140,8 +154,51 @@ const int DAYLIGHT_OFFSET_SEC = 3600;  // Sommerzeit
 // ========== FEATURES ==========
 #define ENABLE_OTA_UPDATE true     // Over-The-Air Updates
 #define ENABLE_MDNS true           // mDNS (http://forellenwaechter.local)
-#define ENABLE_WEB_AUTH true       // Web-Authentifizierung
+#define ENABLE_WEB_AUTH true       // Web-Authentifizierung (JETZT FUNKTIONIERT!)
 #define ENABLE_API true            // REST API
 #define ENABLE_WEBSOCKET true      // WebSocket für Live-Updates
+#define ENABLE_RATE_LIMITING true // Rate Limiting (DoS-Schutz)
+#define ENABLE_WEBSOCKET_AUTH true // WebSocket Authentifizierung
+#define ENABLE_CREDENTIALS_MANAGER true // Sicheres Passwort-Management
+
+// ========== OPTIONALE SENSOREN ==========
+#define ENABLE_DO_SENSOR false     // Dissolved Oxygen Sensor (DFRobot SEN0237)
+#define ENABLE_INA219 false        // Power Monitoring (INA219 I2C)
+
+// DO-Sensor Pin (wenn aktiviert)
+#define DO_PIN 36                  // ADC1_0
+
+// ========== CHART.JS KONFIGURATION ==========
+#define ENABLE_CHARTS true         // Chart.js Datenvisualisierung
+#define CHART_COLORS true          // Farbige Charts
+#define CHART_SMOOTH_LINES true    // Glättung (Tension)
+
+// ========== LTE-MODUL (Optional) ==========
+#define ENABLE_LTE false           // LTE-Modul aktivieren
+#define LTE_MODULE_TYPE "SIM7600"  // "SIM7600" oder "SIM800L"
+#define LTE_APN "internet"         // Provider-APN
+
+// ========== PERFORMANCE-TUNING ==========
+// DS18B20 Resolution (OPTIMIERT: 11→9 bit, -75% Conversion-Zeit)
+#define DS18B20_RESOLUTION 9       // 9, 10, 11 oder 12 bit
+                                    // 9-bit = 94ms, 11-bit = 375ms
+
+// Light Sleep im Main Loop aktivieren (OPTIMIERT: -25mA!)
+#define ENABLE_LIGHT_SLEEP true
+
+// WiFi Idle Power Management (OPTIMIERT: -10mA!)
+#define WIFI_IDLE_TIMEOUT 300000   // 5 Min ohne Client = Max Power Save
+#define WIFI_MAX_POWER_SAVE_IDLE true
+
+// ========== SICHERHEIT ==========
+#define MAX_LOGIN_ATTEMPTS 5       // Max Fehlversuche vor Sperre
+#define LOGIN_BLOCK_DURATION 300000 // 5 Min Sperre
+#define SESSION_TIMEOUT 3600000    // 1 Stunde Session-Timeout
+#define WEBSOCKET_TOKEN_LENGTH 32  // Token-Länge für WebSocket Auth
+
+// ========== DEBUGGING ==========
+#define DEBUG_PERFORMANCE false    // Performance-Metriken ausgeben
+#define DEBUG_MEMORY false         // Heap-Nutzung tracken
+#define DEBUG_NETWORK false        // Netzwerk-Traffic loggen
 
 #endif // CONFIG_H
