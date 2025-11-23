@@ -16,6 +16,7 @@
 #include <esp_wifi.h>
 #include <esp_bt.h>
 #include <esp_sleep.h>
+#include <esp_task_wdt.h>
 #include "config.h"
 
 class PowerManager {

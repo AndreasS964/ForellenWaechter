@@ -90,6 +90,22 @@ unsigned long lastStatsReset = 0;
 bool sdCardAvailable = false;
 String currentLogFile = "";
 
+// ========== FORWARD DECLARATIONS ==========
+
+void setupWiFi();
+void setupOTA();
+void setupWebServer();
+void setupMQTT();
+void reconnectMQTT();
+void publishMQTTData();
+void initSDCard();
+void createNewLogFile();
+void logDataToSD();
+void checkAlarms();
+void setAeration(bool state);
+void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length);
+void sendWebSocketUpdate();
+
 // ========== SETUP ==========
 
 void setup() {
@@ -150,7 +166,9 @@ void setup() {
     // mDNS starten
     #if ENABLE_MDNS
     if (MDNS.begin(HOSTNAME)) {
-        Serial.println("✓ mDNS gestartet: http://" + String(HOSTNAME) + ".local");
+        Serial.print("✓ mDNS gestartet: http://");
+        Serial.print(HOSTNAME);
+        Serial.println(".local");
         MDNS.addService("http", "tcp", WEB_SERVER_PORT);
     }
     #endif
@@ -173,9 +191,11 @@ void setup() {
     #endif
 
     Serial.println("\n✓✓✓ SYSTEM BEREIT ✓✓✓\n");
-    Serial.println("Web-Interface: http://" + WiFi.localIP().toString());
+    Serial.print("Web-Interface: http://");
+    Serial.println(WiFi.localIP());
     if (WiFi.getMode() == WIFI_AP || WiFi.getMode() == WIFI_AP_STA) {
-        Serial.println("Access Point: http://" + WiFi.softAPIP().toString());
+        Serial.print("Access Point: http://");
+        Serial.println(WiFi.softAPIP());
     }
     Serial.println();
 
@@ -317,7 +337,7 @@ void setupWiFi() {
 
     // SECURITY v2.1: Verwende sichere Passwörter aus CredentialsManager
     #if ENABLE_CREDENTIALS_MANAGER
-    const char* apPassword = credentialsManager.getAPPassword().c_str();
+    const char* apPassword = credentialsManager.getAPPassword();
     #else
     const char* apPassword = AP_PASSWORD;
     #endif
@@ -327,11 +347,13 @@ void setupWiFi() {
 
     Serial.print("✓ AP gestartet - IP: ");
     Serial.println(apIP);
-    Serial.println("  SSID: " + String(AP_SSID));
+    Serial.print("  SSID: ");
+    Serial.println(AP_SSID);
+    Serial.print("  Passwort: ");
     #if ENABLE_CREDENTIALS_MANAGER
-    Serial.println("  Passwort: " + credentialsManager.getAPPassword());
+    Serial.println(credentialsManager.getAPPassword());
     #else
-    Serial.println("  Passwort: " + String(AP_PASSWORD));
+    Serial.println(AP_PASSWORD);
     #endif
     Serial.println();
 
@@ -349,14 +371,15 @@ void setupOTA() {
 
     // SECURITY v2.1: Verwende sichere Passwörter aus CredentialsManager
     #if ENABLE_CREDENTIALS_MANAGER
-    ArduinoOTA.setPassword(credentialsManager.getWebPassword().c_str());
+    ArduinoOTA.setPassword(credentialsManager.getOTAPassword());
     #else
     ArduinoOTA.setPassword(WEB_PASSWORD);
     #endif
 
     ArduinoOTA.onStart([]() {
         String type = (ArduinoOTA.getCommand() == U_FLASH) ? "Sketch" : "Filesystem";
-        Serial.println("OTA Update gestartet: " + type);
+        Serial.print("OTA Update gestartet: ");
+        Serial.println(type);
     });
 
     ArduinoOTA.onEnd([]() {
@@ -388,7 +411,8 @@ void setupOTA() {
 void setupMQTT() {
     if (strlen(MQTT_SERVER) > 0) {
         mqttClient.setServer(MQTT_SERVER, MQTT_PORT);
-        Serial.println("✓ MQTT konfiguriert: " + String(MQTT_SERVER));
+        Serial.print("✓ MQTT konfiguriert: ");
+        Serial.println(MQTT_SERVER);
         reconnectMQTT();
     }
 }
@@ -474,7 +498,8 @@ void createNewLogFile() {
         if (file) {
             file.println("Zeitstempel,Wasser_C,Luft_C,pH,TDS_ppm,Wasserstand,Alarm,Belueftung");
             file.close();
-            Serial.println("✓ Log-Datei erstellt: " + currentLogFile);
+            Serial.print("✓ Log-Datei erstellt: ");
+            Serial.println(currentLogFile);
         }
     }
 }
@@ -522,7 +547,8 @@ void logDataToSD() {
     file.close();
 
     #if ENABLE_SERIAL_DEBUG
-    Serial.println("✓ Daten geloggt: " + String(timestamp));
+    Serial.print("✓ Daten geloggt: ");
+    Serial.println(timestamp);
     #endif
 }
 #endif
@@ -567,7 +593,8 @@ void checkAlarms() {
     // Alarm-Status ändern
     if (alarm && !alarmActive) {
         alarmActive = true;
-        Serial.println("⚠⚠⚠ ALARM: " + reason);
+        Serial.print("⚠⚠⚠ ALARM: ");
+        Serial.println(reason);
 
         #if ALARM_AUTO_AERATION
         setAeration(true);
@@ -589,7 +616,8 @@ void checkAlarms() {
 void setAeration(bool state) {
     aerationActive = state;
     digitalWrite(RELAY_AERATION, !state); // Invertiert für active-low
-    Serial.println("Belüftung: " + String(state ? "AN" : "AUS"));
+    Serial.print("Belüftung: ");
+    Serial.println(state ? "AN" : "AUS");
 
     #if MQTT_ENABLED
     if (mqttClient.connected()) {
