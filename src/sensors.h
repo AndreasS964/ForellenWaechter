@@ -101,12 +101,7 @@ public:
         lastReadDuration(0),
         totalReadTime(0),
         readCount(0) {
-
-        currentData.valid = false;
-        #if ENABLE_DO_SENSOR
-        currentData.dissolvedOxygen = 0.0;
-        currentData.doSaturation = 0.0;
-        #endif
+        resetCurrentData();
         resetStats();
     }
 
@@ -178,24 +173,36 @@ public:
     // Alle Sensoren auslesen
     bool readAll() {
         if (!sensorsInitialized) {
-            currentData.valid = false;
+            resetCurrentData();
             return false;
         }
 
         unsigned long startTime = millis();
 
+        bool success = true;
+
+        #if ENABLE_DO_SENSOR
+        // Optional: DO-Werte vor jeder Messung auf sichere Defaults setzen,
+        // falls der Sensor nicht verfügbar ist oder ein Fehler auftritt.
+        currentData.dissolvedOxygen = 0.0;
+        currentData.doSaturation = 0.0;
+        #endif
+
         // Temperatur
         if (!readTemperatures()) {
+            success = false;
             tempSensorErrors++;
         }
 
         // pH
         if (!readPH()) {
+            success = false;
             phSensorErrors++;
         }
 
         // TDS
         if (!readTDS()) {
+            success = false;
             tdsSensorErrors++;
         }
 
@@ -209,14 +216,21 @@ public:
                 currentData.dissolvedOxygen = doSensor->getDO();
                 currentData.doSaturation = doSensor->getSaturation();
             } else {
+                success = false;
                 doSensorErrors++;
+                currentData.dissolvedOxygen = 0.0;
+                currentData.doSaturation = 0.0;
             }
+        } else {
+            // Kein DO-Sensor aktiv: Werte als nicht verfügbar markieren
+            currentData.dissolvedOxygen = 0.0;
+            currentData.doSaturation = 0.0;
         }
         #endif
 
         // Timestamp
         currentData.timestamp = millis();
-        currentData.valid = true;
+        currentData.valid = success;
 
         // Performance-Tracking
         lastReadDuration = millis() - startTime;
@@ -231,10 +245,16 @@ public:
         }
         #endif
 
-        // Statistiken aktualisieren
-        updateStats();
+        // Statistiken nur mit gültigen Daten aktualisieren
+        if (success) {
+            updateStats();
+        }
 
-        return true;
+        if (!success) {
+            Serial.println("⚠ Ungültige Sensordaten – Messung verworfen");
+        }
+
+        return success;
     }
 
     // Temperatur-Sensoren auslesen
@@ -387,6 +407,22 @@ public:
         airTempStats = {0, 0, 0, 0};
         pHStats = {0, 0, 0, 0};
         tdsStats = {0, 0, 0, 0};
+    }
+
+    // Messwerte auf definierte Startwerte zurücksetzen
+    void resetCurrentData() {
+        currentData.waterTemp = 0.0;
+        currentData.airTemp = 0.0;
+        currentData.pH = 0.0;
+        currentData.tds = 0.0;
+        currentData.waterLevel = false;
+        currentData.timestamp = 0;
+        currentData.valid = false;
+
+        #if ENABLE_DO_SENSOR
+        currentData.dissolvedOxygen = 0.0;
+        currentData.doSaturation = 0.0;
+        #endif
     }
 
     // Statistiken abrufen
