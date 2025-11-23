@@ -35,14 +35,17 @@ extern RateLimiter rateLimiter;
 extern INA219Monitor powerMonitor;
 #endif
 
+#include "chart_data.h"
+extern ChartDataManager chartDataManager;
+
 // Forward Declarations
 extern SensorManager sensorManager;
 extern bool aerationActive;
 extern bool alarmActive;
 
-// Web Server & WebSocket
-WebServer server(WEB_SERVER_PORT);
-WebSocketsServer webSocket(WEBSOCKET_PORT);
+// Web Server & WebSocket (extern - defined in main.cpp)
+extern WebServer server;
+extern WebSocketsServer webSocket;
 
 // SECURITY v2.1: Enhanced Session Management
 struct ClientSession {
@@ -71,6 +74,7 @@ const char HTML_PAGE[] PROGMEM = R"=====(
     <title>ForellenWächter v2.1</title>
     <link rel="manifest" href="/manifest.json">
     <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -551,6 +555,66 @@ const char HTML_PAGE[] PROGMEM = R"=====(
         [data-tooltip]:hover::after {
             opacity: 1;
         }
+
+        /* Chart Container */
+        .chart-container {
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+            position: relative;
+            height: 400px;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .chart-tabs {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .chart-tab {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            background: var(--bg);
+            color: var(--text);
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.3s;
+            border: 1px solid var(--border);
+        }
+
+        .chart-tab.active {
+            background: var(--secondary);
+            color: white;
+            border-color: var(--secondary);
+        }
+
+        .chart-tab:hover:not(.active) {
+            background: var(--border);
+        }
+
+        .chart-canvas {
+            position: relative;
+            height: 320px;
+        }
+
+        @media (max-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+            .chart-canvas {
+                height: 270px;
+            }
+        }
     </style>
 </head>
 <body data-theme="dark">
@@ -632,6 +696,22 @@ const char HTML_PAGE[] PROGMEM = R"=====(
             </div>
         </div>
 
+        <!-- Chart.js Visualisierung -->
+        <div class="chart-container">
+            <div class="chart-header">
+                <h2>📈 Verlauf (4 Stunden)</h2>
+                <div class="chart-tabs">
+                    <button class="chart-tab active" onclick="switchChart('waterTemp')">💧 Wasser</button>
+                    <button class="chart-tab" onclick="switchChart('airTemp')">🌡️ Luft</button>
+                    <button class="chart-tab" onclick="switchChart('pH')">⚗️ pH</button>
+                    <button class="chart-tab" onclick="switchChart('tds')">💎 TDS</button>
+                </div>
+            </div>
+            <div class="chart-canvas">
+                <canvas id="sensorChart"></canvas>
+            </div>
+        </div>
+
         <!-- Statistics -->
         <div class="stats-section">
             <h2 style="margin-bottom: 10px;">📊 24h Statistiken</h2>
@@ -676,6 +756,16 @@ const char HTML_PAGE[] PROGMEM = R"=====(
         let ws;
         let reconnectInterval;
         let statsUpdateInterval;
+        let chartUpdateInterval;
+        let sensorChart = null;
+        let currentChartType = 'waterTemp';
+        let chartData = {
+            labels: [],
+            waterTemp: [],
+            airTemp: [],
+            pH: [],
+            tds: []
+        };
 
         // Theme Management
         function toggleTheme() {
@@ -687,6 +777,7 @@ const char HTML_PAGE[] PROGMEM = R"=====(
             body.setAttribute('data-theme', newTheme);
             icon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
             localStorage.setItem('theme', newTheme);
+            updateChartTheme();
         }
 
         // Theme aus LocalStorage laden
@@ -841,6 +932,157 @@ const char HTML_PAGE[] PROGMEM = R"=====(
                 .catch(e => console.error('Fehler beim Laden der Statistiken:', e));
         }
 
+        // Chart.js Initialisierung
+        function initChart() {
+            const ctx = document.getElementById('sensorChart');
+            const isDark = document.body.getAttribute('data-theme') === 'dark';
+
+            Chart.defaults.color = isDark ? '#f1f5f9' : '#1e293b';
+            Chart.defaults.borderColor = isDark ? '#334155' : '#e2e8f0';
+
+            sensorChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartData.labels,
+                    datasets: [{
+                        label: 'Wassertemperatur (°C)',
+                        data: chartData.waterTemp,
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 3,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            backgroundColor: isDark ? '#1e293b' : '#ffffff',
+                            titleColor: isDark ? '#f1f5f9' : '#1e293b',
+                            bodyColor: isDark ? '#f1f5f9' : '#1e293b',
+                            borderColor: isDark ? '#334155' : '#e2e8f0',
+                            borderWidth: 1
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            grid: {
+                                color: isDark ? 'rgba(51, 65, 85, 0.3)' : 'rgba(226, 232, 240, 0.8)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Chart Typ wechseln
+        function switchChart(type) {
+            currentChartType = type;
+
+            // Tab-Styling aktualisieren
+            document.querySelectorAll('.chart-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Chart-Daten aktualisieren
+            updateChartDisplay();
+        }
+
+        // Chart-Anzeige aktualisieren
+        function updateChartDisplay() {
+            if (!sensorChart) return;
+
+            const configs = {
+                waterTemp: {
+                    label: 'Wassertemperatur (°C)',
+                    data: chartData.waterTemp,
+                    color: '#3b82f6',
+                    min: TEMP_MIN,
+                    max: TEMP_MAX
+                },
+                airTemp: {
+                    label: 'Lufttemperatur (°C)',
+                    data: chartData.airTemp,
+                    color: '#10b981',
+                    min: -10,
+                    max: 40
+                },
+                pH: {
+                    label: 'pH-Wert',
+                    data: chartData.pH,
+                    color: '#f59e0b',
+                    min: PH_MIN,
+                    max: PH_MAX
+                },
+                tds: {
+                    label: 'TDS (ppm)',
+                    data: chartData.tds,
+                    color: '#8b5cf6',
+                    min: 0,
+                    max: TDS_MAX
+                }
+            };
+
+            const config = configs[currentChartType];
+
+            sensorChart.data.labels = chartData.labels;
+            sensorChart.data.datasets[0].label = config.label;
+            sensorChart.data.datasets[0].data = config.data;
+            sensorChart.data.datasets[0].borderColor = config.color;
+            sensorChart.data.datasets[0].backgroundColor = config.color + '20';
+
+            sensorChart.options.scales.y.min = config.min;
+            sensorChart.options.scales.y.max = config.max;
+
+            sensorChart.update('none');
+        }
+
+        // Chart-Daten vom Server laden
+        function loadChartData() {
+            fetch('/api/chartdata')
+                .then(r => r.json())
+                .then(data => {
+                    chartData = data;
+                    updateChartDisplay();
+                })
+                .catch(e => console.error('Fehler beim Laden der Chart-Daten:', e));
+        }
+
+        // Theme-Update für Chart
+        function updateChartTheme() {
+            if (!sensorChart) return;
+
+            const isDark = document.body.getAttribute('data-theme') === 'dark';
+            Chart.defaults.color = isDark ? '#f1f5f9' : '#1e293b';
+            Chart.defaults.borderColor = isDark ? '#334155' : '#e2e8f0';
+
+            sensorChart.options.scales.y.grid.color = isDark ? 'rgba(51, 65, 85, 0.3)' : 'rgba(226, 232, 240, 0.8)';
+            sensorChart.options.plugins.tooltip.backgroundColor = isDark ? '#1e293b' : '#ffffff';
+            sensorChart.options.plugins.tooltip.titleColor = isDark ? '#f1f5f9' : '#1e293b';
+            sensorChart.options.plugins.tooltip.bodyColor = isDark ? '#f1f5f9' : '#1e293b';
+            sensorChart.options.plugins.tooltip.borderColor = isDark ? '#334155' : '#e2e8f0';
+
+            sensorChart.update('none');
+        }
+
         // Grenzwerte (vom Server)
         const TEMP_MIN = )=====" + String(TEMP_MIN) + R"=====(;
         const TEMP_MAX = )=====" + String(TEMP_MAX) + R"=====(;
@@ -852,7 +1094,11 @@ const char HTML_PAGE[] PROGMEM = R"=====(
         window.addEventListener('load', () => {
             connectWebSocket();
             loadStats();
+            initChart();
+            loadChartData();
+
             statsUpdateInterval = setInterval(loadStats, 60000); // Alle 60s
+            chartUpdateInterval = setInterval(loadChartData, 60000); // Alle 60s Chart aktualisieren
         });
 
         // PWA Installation
@@ -1028,6 +1274,36 @@ void handleAPIDownload() {
     #endif
 }
 
+// Chart Data API (v2.1)
+void handleAPIChartData() {
+    #if ENABLE_RATE_LIMITING
+    if (!rateLimiter.allowRequest(server.client().remoteIP())) {
+        server.send(429, "application/json", "{\"error\":\"Too many requests\"}");
+        return;
+    }
+    #endif
+
+    // Anzahl der Datenpunkte aus Query-Parameter (default: 48 = 4h)
+    int maxPoints = 48;
+    if (server.hasArg("points")) {
+        maxPoints = server.arg("points").toInt();
+        if (maxPoints < 1) maxPoints = 48;
+        if (maxPoints > 288) maxPoints = 288; // Max 24h
+    }
+
+    // Optimierte Version mit Buffer (weniger Heap-Fragmentierung)
+    static char chartBuffer[4096]; // 4KB statischer Buffer
+    int written = chartDataManager.getChartJSONOptimized(chartBuffer, sizeof(chartBuffer), maxPoints);
+
+    if (written > 0 && written < sizeof(chartBuffer)) {
+        server.send(200, "application/json", chartBuffer);
+    } else {
+        // Fallback auf String-Methode bei Buffer-Überlauf
+        String json = chartDataManager.getChartJSON(maxPoints);
+        server.send(200, "application/json", json);
+    }
+}
+
 // Optional: INA219 API (v2.1)
 #if ENABLE_INA219
 void handleAPIPower() {
@@ -1063,6 +1339,7 @@ void setupWebServer() {
     server.on("/api/data", HTTP_GET, handleAPIData);
     server.on("/api/stats", HTTP_GET, handleAPIStats);
     server.on("/api/download", HTTP_GET, handleAPIDownload);
+    server.on("/api/chartdata", HTTP_GET, handleAPIChartData);
 
     #if ENABLE_INA219
     server.on("/api/power", HTTP_GET, handleAPIPower);
@@ -1076,6 +1353,10 @@ void setupWebServer() {
     server.begin();
     Serial.print("✓ Web Server gestartet auf Port ");
     Serial.println(WEB_SERVER_PORT);
+
+    // WebSocket Event Handler registrieren (extern defined in main.cpp)
+    extern void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length);
+    webSocket.onEvent(webSocketEvent);
 
     webSocket.begin();
     Serial.print("✓ WebSocket gestartet auf Port ");

@@ -28,6 +28,7 @@ Ein hochmodernes ESP32-basiertes IoT-Monitoring-System für Forellenzucht, optim
 **Resultat**: **80mA → 26mA (-67%)** | **Batterie-Laufzeit: 37 Tage → 114 Tage (+207%)**
 
 ### 🆕 **NEUE MODULE & FEATURES**
+- ✅ **Chart.js Datenvisualisierung** - 4h/24h Echtzeit-Graphen mit Dark Mode Support
 - ✅ **DO-Sensor Support** - Dissolved Oxygen Monitoring (DFRobot/Atlas, optional)
 - ✅ **INA219 Power Monitor** - Stromverbrauch, Spannung, Leistung tracken (optional)
 - ✅ **LTE-Modul Support** - SIM7600/SIM800L Unterstützung für Remote-Standorte
@@ -46,13 +47,15 @@ ForellenWächter v2.1 ist ein professionelles, security-gehärtetes Überwachung
 - 🔒 **Production-Grade Security** - Rate Limiting, sichere Credentials, Path Protection
 - ⚡ **Extrem Energieeffizient** - Nur 26mA @ 5V (67% Einsparung)
 - 💾 **SD-Karten Logging** - Automatische CSV-Speicherung mit Path Protection
+- 📊 **Chart.js Visualisierung** - Interaktive 4h/24h Echtzeit-Graphen für alle Sensoren
+- 📈 **24h Statistiken** - Min/Max/Avg Tracking mit Performance-Metriken
 - 📊 **24h Statistiken** - Min/Max/Avg Tracking mit Performance-Metriken
 - 🌐 **Modernes Web-Dashboard** - Dark Mode, Glassmorphism, PWA Support
 - 🔄 **Intelligente Belüftung** - Automatisch bei Alarm-Zuständen
 - 📡 **Dual-Network** - WiFi + optionales LTE-Modul (SIM7600/SIM800L)
 - 🏠 **MQTT Integration** - Home Assistant / Node-RED Ready
 - 🔐 **Sichere OTA Updates** - Mit Credentials Manager Integration
-- 📈 **Optionale Sensoren** - DO-Sensor, INA219 Power-Monitor
+- 🔌 **Optionale Sensoren** - DO-Sensor, INA219 Power-Monitor
 
 ## 🎯 Überwachte Parameter
 
