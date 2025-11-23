@@ -98,9 +98,23 @@ ForellenWächter v2.1 ist ein professionelles, security-gehärtetes Überwachung
 
 ## 📦 Installation
 
-### **🎯 Empfohlen: PlatformIO** (Professionell)
+### **🎯 Empfohlen: Arduino IDE 2.x** (Einfach & Stabil)
 
-PlatformIO ist die moderne Alternative zur Arduino IDE:
+Arduino IDE ist die einfachste und stabilste Methode für ESP32:
+
+**Schnellstart:**
+1. [Arduino IDE 2.x herunterladen](https://www.arduino.cc/en/software)
+2. ESP32 Board Manager installieren (Version 2.0.14+)
+3. Bibliotheken installieren (OneWire, DallasTemperature, WebSockets)
+4. `ForellenWaechter_v2.1.ino` öffnen und hochladen
+
+📖 **Detaillierte Anleitung:** Siehe [ARDUINO_IDE_SETUP.md](ARDUINO_IDE_SETUP.md)
+
+---
+
+### **Alternative: PlatformIO** (Für Fortgeschrittene)
+
+PlatformIO ist eine Alternative für erfahrene Entwickler:
 - ⚡ 3-5x schnellere Kompilierung
 - 🔍 IntelliSense & Auto-Completion
 - 🐛 Echter Debugger
