@@ -89,50 +89,84 @@ ForellenWächter v2.0 ist ein professionelles Überwachungssystem für Forellenz
 
 ## 📦 Installation
 
-### 1. Arduino IDE Setup
+### **🎯 Empfohlen: PlatformIO** (Professionell)
+
+PlatformIO ist die moderne Alternative zur Arduino IDE mit vielen Vorteilen:
+- ⚡ 3-5x schnellere Kompilierung
+- 🔍 Code IntelliSense & Auto-Completion
+- 🐛 Echter Debugger mit Breakpoints
+- 📦 Automatisches Dependency Management
+- 🚀 Integriert in VS Code
+
+**Quick Start:**
+
+```bash
+1. VS Code installieren: https://code.visualstudio.com/
+2. PlatformIO Extension installieren (in VS Code)
+3. Projekt-Ordner öffnen
+4. "Build" Button klicken → Fertig!
+```
+
+**📚 Detaillierte Anleitung:** [PLATFORMIO_GUIDE.md](PLATFORMIO_GUIDE.md)
+
+---
+
+### Arduino IDE (Alternative)
+
+Wenn du lieber Arduino IDE nutzt:
+
+#### 1. Arduino IDE Setup
 
 ```bash
 # Arduino IDE 2.x installieren
 # ESP32 Board Support hinzufügen:
 # Preferences -> Additional Board Manager URLs:
 https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
-
-# Boards Manager -> ESP32 installieren
 ```
 
-### 2. Benötigte Bibliotheken
-
-Über Arduino Library Manager installieren:
+#### 2. Benötigte Bibliotheken
 
 ```
-✓ WiFi (ESP32 Core)
-✓ WebServer (ESP32 Core)
-✓ WebSocketsServer (by Markus Sattler)
-✓ ESPmDNS (ESP32 Core)
-✓ ArduinoOTA (ESP32 Core)
-✓ SD (Standard)
-✓ SPI (Standard)
 ✓ OneWire
 ✓ DallasTemperature
+✓ WebSocketsServer (by Markus Sattler)
 ✓ PubSubClient (optional, für MQTT)
 ```
 
-### 3. Projekt-Struktur
+#### 3. Dateien verwenden
 
-**NEU in v2.0:** Modularer Aufbau
+```
+Nutze: ForellenWaechter_v2.0.ino + alle .h Dateien
+(Legacy-Unterstützung für Arduino IDE)
+```
 
+---
+
+### 🗂️ Projekt-Strukturen
+
+**PlatformIO:**
 ```
 ForellenWaechter/
-├── ForellenWaechter_v2.0.ino    # Hauptdatei
-├── config.h                      # Konfiguration
-├── power_management.h            # Energie-Management
-├── sensors.h                     # Sensor-Handling
-└── webserver.h                   # Web-Server & UI
+├── platformio.ini        # Projekt-Konfiguration
+└── src/
+    ├── main.cpp          # Hauptprogramm
+    ├── config.h
+    ├── power_management.h
+    ├── sensors.h
+    └── webserver.h
 ```
 
-**Wichtig:** Alle 5 Dateien müssen im gleichen Ordner sein!
+**Arduino IDE:**
+```
+ForellenWaechter/
+├── ForellenWaechter_v2.0.ino
+├── config.h
+├── power_management.h
+├── sensors.h
+└── webserver.h
+```
 
-### 3. Hardware-Verkabelung
+### Hardware-Verkabelung
 
 ```
 ESP32 Pin-Belegung:
