@@ -122,6 +122,8 @@ Wenn du lieber Arduino IDE nutzt:
 # ESP32 Board Support hinzufügen:
 # Preferences -> Additional Board Manager URLs:
 https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+
+# Boards Manager -> ESP32 installieren
 ```
 
 #### 2. Benötigte Bibliotheken
@@ -155,6 +157,35 @@ ForellenWaechter/
     ├── sensors.h
     └── webserver.h
 ```
+Über Arduino Library Manager installieren:
+
+```
+✓ WiFi (ESP32 Core)
+✓ WebServer (ESP32 Core)
+✓ WebSocketsServer (by Markus Sattler)
+✓ ESPmDNS (ESP32 Core)
+✓ ArduinoOTA (ESP32 Core)
+✓ SD (Standard)
+✓ SPI (Standard)
+✓ OneWire
+✓ DallasTemperature
+✓ PubSubClient (optional, für MQTT)
+```
+
+### 3. Projekt-Struktur
+
+**NEU in v2.0:** Modularer Aufbau
+
+```
+ForellenWaechter/
+├── ForellenWaechter_v2.0.ino    # Hauptdatei
+├── config.h                      # Konfiguration
+├── power_management.h            # Energie-Management
+├── sensors.h                     # Sensor-Handling
+└── webserver.h                   # Web-Server & UI
+```
+
+**Wichtig:** Alle 5 Dateien müssen im gleichen Ordner sein!
 
 **Arduino IDE:**
 ```
@@ -189,6 +220,9 @@ ESP32 Pin-Belegung:
 **Detaillierte Verkabelungsdiagramme:** siehe [WIRING.md](WIRING.md)
 
 ### 4. Konfiguration anpassen
+
+Öffne `config.h` und passe an:
+
 
 Öffne `config.h` und passe an:
 
@@ -375,6 +409,13 @@ Das Interface verwendet die Lucas Haug Farbpalette:
 ## 🔋 Energie-Optimierung (Off-Grid)
 
 ### Stromverbrauch (gemessen)
+
+| Modus | Verbrauch | Beschreibung |
+|-------|-----------|--------------|
+| **Normal (v1.2)** | ~180mA | 240MHz, WiFi aktiv, BT an |
+| **Optimiert (v2.0)** | ~80mA | 80MHz, WiFi Power Save, BT aus |
+| **Power Save Modus** | ~60mA | Bei niedriger Batterie |
+
 
 | Modus | Verbrauch | Beschreibung |
 |-------|-----------|--------------|
