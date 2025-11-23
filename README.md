@@ -89,7 +89,33 @@ ForellenWächter v2.0 ist ein professionelles Überwachungssystem für Forellenz
 
 ## 📦 Installation
 
-### 1. Arduino IDE Setup
+### **🎯 Empfohlen: PlatformIO** (Professionell)
+
+PlatformIO ist die moderne Alternative zur Arduino IDE mit vielen Vorteilen:
+- ⚡ 3-5x schnellere Kompilierung
+- 🔍 Code IntelliSense & Auto-Completion
+- 🐛 Echter Debugger mit Breakpoints
+- 📦 Automatisches Dependency Management
+- 🚀 Integriert in VS Code
+
+**Quick Start:**
+
+```bash
+1. VS Code installieren: https://code.visualstudio.com/
+2. PlatformIO Extension installieren (in VS Code)
+3. Projekt-Ordner öffnen
+4. "Build" Button klicken → Fertig!
+```
+
+**📚 Detaillierte Anleitung:** [PLATFORMIO_GUIDE.md](PLATFORMIO_GUIDE.md)
+
+---
+
+### Arduino IDE (Alternative)
+
+Wenn du lieber Arduino IDE nutzt:
+
+#### 1. Arduino IDE Setup
 
 ```bash
 # Arduino IDE 2.x installieren
@@ -100,8 +126,37 @@ https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32
 # Boards Manager -> ESP32 installieren
 ```
 
-### 2. Benötigte Bibliotheken
+#### 2. Benötigte Bibliotheken
 
+```
+✓ OneWire
+✓ DallasTemperature
+✓ WebSocketsServer (by Markus Sattler)
+✓ PubSubClient (optional, für MQTT)
+```
+
+#### 3. Dateien verwenden
+
+```
+Nutze: ForellenWaechter_v2.0.ino + alle .h Dateien
+(Legacy-Unterstützung für Arduino IDE)
+```
+
+---
+
+### 🗂️ Projekt-Strukturen
+
+**PlatformIO:**
+```
+ForellenWaechter/
+├── platformio.ini        # Projekt-Konfiguration
+└── src/
+    ├── main.cpp          # Hauptprogramm
+    ├── config.h
+    ├── power_management.h
+    ├── sensors.h
+    └── webserver.h
+```
 Über Arduino Library Manager installieren:
 
 ```
@@ -132,7 +187,17 @@ ForellenWaechter/
 
 **Wichtig:** Alle 5 Dateien müssen im gleichen Ordner sein!
 
-### 3. Hardware-Verkabelung
+**Arduino IDE:**
+```
+ForellenWaechter/
+├── ForellenWaechter_v2.0.ino
+├── config.h
+├── power_management.h
+├── sensors.h
+└── webserver.h
+```
+
+### Hardware-Verkabelung
 
 ```
 ESP32 Pin-Belegung:
@@ -155,6 +220,9 @@ ESP32 Pin-Belegung:
 **Detaillierte Verkabelungsdiagramme:** siehe [WIRING.md](WIRING.md)
 
 ### 4. Konfiguration anpassen
+
+Öffne `config.h` und passe an:
+
 
 Öffne `config.h` und passe an:
 
@@ -341,6 +409,13 @@ Das Interface verwendet die Lucas Haug Farbpalette:
 ## 🔋 Energie-Optimierung (Off-Grid)
 
 ### Stromverbrauch (gemessen)
+
+| Modus | Verbrauch | Beschreibung |
+|-------|-----------|--------------|
+| **Normal (v1.2)** | ~180mA | 240MHz, WiFi aktiv, BT an |
+| **Optimiert (v2.0)** | ~80mA | 80MHz, WiFi Power Save, BT aus |
+| **Power Save Modus** | ~60mA | Bei niedriger Batterie |
+
 
 | Modus | Verbrauch | Beschreibung |
 |-------|-----------|--------------|
