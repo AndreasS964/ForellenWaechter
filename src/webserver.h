@@ -1164,14 +1164,15 @@ void handleAPIData() {
     char json[512];
     int written = snprintf(json, sizeof(json),
         "{\"waterTemp\":%.2f,\"airTemp\":%.2f,\"pH\":%.2f,\"tds\":%.0f,"
-        "\"waterLevel\":%s,\"alarm\":%s,\"aeration\":%s",
+        "\"waterLevel\":%s,\"alarm\":%s,\"aeration\":%s,\"valid\":%s",
         data.waterTemp,
         data.airTemp,
         data.pH,
         data.tds,
         data.waterLevel ? "true" : "false",
         alarmActive ? "true" : "false",
-        aerationActive ? "true" : "false"
+        aerationActive ? "true" : "false",
+        data.valid ? "true" : "false"
     );
 
     // Optional: DO-Sensor Werte (v2.1)
