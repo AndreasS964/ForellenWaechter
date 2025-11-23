@@ -1072,10 +1072,12 @@ void setupWebServer() {
     });
 
     server.begin();
-    Serial.println("✓ Web Server gestartet auf Port " + String(WEB_SERVER_PORT));
+    Serial.print("✓ Web Server gestartet auf Port ");
+    Serial.println(WEB_SERVER_PORT);
 
     webSocket.begin();
-    Serial.println("✓ WebSocket gestartet auf Port " + String(WEBSOCKET_PORT));
+    Serial.print("✓ WebSocket gestartet auf Port ");
+    Serial.println(WEBSOCKET_PORT);
 }
 
 #endif // WEBSERVER_H
