@@ -14,6 +14,8 @@
 
 #include <WebServer.h>
 #include <WebSocketsServer.h>
+#include <SD.h>
+#include <FS.h>
 #include "config.h"
 #include "sensors.h"
 
