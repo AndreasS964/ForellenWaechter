@@ -492,13 +492,18 @@ void logDataToSD() {
         }
     }
 
+    SensorData data = sensorManager.getData();
+
+    if (!data.valid) {
+        Serial.println("⚠ SD-Logging übersprungen: ungültige Sensordaten");
+        return;
+    }
+
     File file = SD.open(currentLogFile.c_str(), FILE_APPEND);
     if (!file) {
         Serial.println("✗ SD Log Fehler");
         return;
     }
-
-    SensorData data = sensorManager.getData();
 
     // Zeitstempel
     char timestamp[32];
@@ -531,6 +536,12 @@ void logDataToSD() {
 
 void checkAlarms() {
     SensorData data = sensorManager.getData();
+
+    if (!data.valid) {
+        Serial.println("⚠ Alarmprüfung übersprungen: ungültige Sensordaten");
+        return;
+    }
+
     bool alarm = false;
     String reason = "";
 
@@ -622,14 +633,15 @@ void sendWebSocketUpdate() {
     char json[512];
     int written = snprintf(json, sizeof(json),
         "{\"waterTemp\":%.2f,\"airTemp\":%.2f,\"pH\":%.2f,\"tds\":%.0f,"
-        "\"waterLevel\":%s,\"alarm\":%s,\"aeration\":%s",
+        "\"waterLevel\":%s,\"alarm\":%s,\"aeration\":%s,\"valid\":%s",
         data.waterTemp,
         data.airTemp,
         data.pH,
         data.tds,
         data.waterLevel ? "true" : "false",
         alarmActive ? "true" : "false",
-        aerationActive ? "true" : "false"
+        aerationActive ? "true" : "false",
+        data.valid ? "true" : "false"
     );
 
     // Optional: DO-Sensor Werte (v2.1)
