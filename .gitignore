@@ -9,6 +9,19 @@
 *.ino.cpp
 *.ino.globals.h
 
+# Kopierte Header-Dateien (für Arduino IDE User)
+# Diese befinden sich eigentlich in src/ und werden nur kopiert
+/config.h
+/power_management.h
+/sensors.h
+/chart_data.h
+/webserver.h
+/credentials_manager.h
+/rate_limiter.h
+/network_manager.h
+/ina219_monitor.h
+/do_sensor.h
+
 # Build artifacts
 *.bin
 *.elf
