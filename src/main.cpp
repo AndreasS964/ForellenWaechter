@@ -151,6 +151,9 @@ void setup() {
         Serial.println("⚠ WARNUNG: Sensor-Initialisierung fehlgeschlagen!");
     }
 
+    // Chart Data Manager initialisieren (v2.1.1 - lädt gespeicherte Daten)
+    chartDataManager.begin();
+
     // Credentials Manager initialisieren (v2.1)
     #if ENABLE_CREDENTIALS_MANAGER
     credentialsManager.begin();

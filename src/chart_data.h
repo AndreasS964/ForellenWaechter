@@ -7,12 +7,14 @@
  * - Kompakte Speichernutzung (~9 KB RAM)
  * - Schnelle JSON-Serialisierung
  * - Automatische Datenrotation
+ * - Persistent Storage (überlebt Reboots!) ✨ NEW v2.1.1
  */
 
 #ifndef CHART_DATA_H
 #define CHART_DATA_H
 
 #include <Arduino.h>
+#include <Preferences.h>
 #include "config.h"
 
 // Chart Konfiguration
@@ -34,9 +36,25 @@ private:
     int currentIndex;
     int dataCount;
     unsigned long lastUpdate;
+    Preferences prefs;
+    bool autosaveEnabled;
 
 public:
-    ChartDataManager() : currentIndex(0), dataCount(0), lastUpdate(0) {}
+    ChartDataManager() : currentIndex(0), dataCount(0), lastUpdate(0), autosaveEnabled(true) {}
+
+    // Initialisierung - lädt gespeicherte Daten
+    void begin() {
+        Serial.println("\n=== Chart Data Manager Init ===");
+
+        // Versuche gespeicherte Daten zu laden
+        if (loadFromPreferences()) {
+            Serial.print("✓ Chart-Daten geladen: ");
+            Serial.print(dataCount);
+            Serial.println(" Punkte");
+        } else {
+            Serial.println("⚠ Keine gespeicherten Chart-Daten gefunden");
+        }
+    }
 
     // Datenpunkt hinzufügen (wird alle 5 Minuten aufgerufen)
     void addDataPoint(float waterTemp, float airTemp, float pH, float tds) {
@@ -52,6 +70,11 @@ public:
         }
 
         lastUpdate = millis();
+
+        // Auto-save nach jedem Update (überlebt Reboot!)
+        if (autosaveEnabled) {
+            saveToPreferences();
+        }
     }
 
     // Prüfen ob Update nötig ist
@@ -233,6 +256,103 @@ public:
     // Letzte Update-Zeit
     unsigned long getLastUpdate() {
         return lastUpdate;
+    }
+
+    // ========== PERSISTENCE FUNKTIONEN (v2.1.1) ==========
+
+    // Daten in Preferences speichern (EEPROM/Flash)
+    bool saveToPreferences() {
+        prefs.begin("chartdata", false);
+
+        // Metadata speichern
+        prefs.putInt("currentIdx", currentIndex);
+        prefs.putInt("dataCount", dataCount);
+        prefs.putULong("lastUpdate", lastUpdate);
+
+        // Datenpunkte in Chunks speichern (Preferences hat 4KB Limit pro Key)
+        // Teile Array in 4 Chunks à ~2.3 KB
+        const int chunkSize = CHART_DATA_POINTS / 4; // 72 Punkte pro Chunk
+        const size_t bytesPerChunk = chunkSize * sizeof(ChartDataPoint);
+
+        for (int chunk = 0; chunk < 4; chunk++) {
+            char key[12];
+            snprintf(key, sizeof(key), "data_%d", chunk);
+
+            const uint8_t* dataPtr = (const uint8_t*)&dataPoints[chunk * chunkSize];
+            prefs.putBytes(key, dataPtr, bytesPerChunk);
+        }
+
+        prefs.end();
+
+        #if ENABLE_SERIAL_DEBUG
+        Serial.print("✓ Chart-Daten gespeichert (");
+        Serial.print(dataCount);
+        Serial.println(" Punkte)");
+        #endif
+
+        return true;
+    }
+
+    // Daten aus Preferences laden
+    bool loadFromPreferences() {
+        prefs.begin("chartdata", true); // Read-only
+
+        // Prüfe ob Daten vorhanden
+        if (!prefs.isKey("dataCount")) {
+            prefs.end();
+            return false;
+        }
+
+        // Metadata laden
+        currentIndex = prefs.getInt("currentIdx", 0);
+        dataCount = prefs.getInt("dataCount", 0);
+        lastUpdate = prefs.getULong("lastUpdate", 0);
+
+        // Datenpunkte in Chunks laden
+        const int chunkSize = CHART_DATA_POINTS / 4;
+        const size_t bytesPerChunk = chunkSize * sizeof(ChartDataPoint);
+
+        for (int chunk = 0; chunk < 4; chunk++) {
+            char key[12];
+            snprintf(key, sizeof(key), "data_%d", chunk);
+
+            uint8_t* dataPtr = (uint8_t*)&dataPoints[chunk * chunkSize];
+            prefs.getBytes(key, dataPtr, bytesPerChunk);
+        }
+
+        prefs.end();
+
+        // Validierung
+        if (currentIndex < 0 || currentIndex >= CHART_DATA_POINTS) {
+            currentIndex = 0;
+            dataCount = 0;
+            return false;
+        }
+
+        if (dataCount < 0 || dataCount > CHART_DATA_POINTS) {
+            dataCount = 0;
+            return false;
+        }
+
+        return true;
+    }
+
+    // Manuelles Speichern erzwingen
+    void forceSave() {
+        saveToPreferences();
+    }
+
+    // Auto-save aktivieren/deaktivieren
+    void setAutosave(bool enabled) {
+        autosaveEnabled = enabled;
+    }
+
+    // Gespeicherte Daten löschen
+    void clearSavedData() {
+        prefs.begin("chartdata", false);
+        prefs.clear();
+        prefs.end();
+        Serial.println("✓ Gespeicherte Chart-Daten gelöscht");
     }
 };
 

@@ -18,7 +18,7 @@
  *
  *  Lizenz: MIT
  *  Author: Andreas S. (AndreasS964)
- *  Version: 2.1.0
+ *  Version: 2.1.1
  * ═══════════════════════════════════════════════════════════
  *
  *  ARDUINO IDE SETUP:
@@ -159,6 +159,9 @@ void setup() {
     if (!sensorManager.begin()) {
         Serial.println("⚠ WARNUNG: Sensor-Initialisierung fehlgeschlagen!");
     }
+
+    // Chart Data Manager initialisieren (v2.1.1 - lädt gespeicherte Daten)
+    chartDataManager.begin();
 
     // Credentials Manager initialisieren (v2.1)
     #if ENABLE_CREDENTIALS_MANAGER

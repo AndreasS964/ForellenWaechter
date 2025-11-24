@@ -15,7 +15,7 @@
 #define CONFIG_H
 
 // ========== VERSION ==========
-#define FW_VERSION "2.1.0"
+#define FW_VERSION "2.1.1"
 #define FW_BUILD_DATE __DATE__
 #define BUILD_DATE __DATE__ " " __TIME__
 
