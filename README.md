@@ -49,7 +49,6 @@ ForellenWächter v2.1 ist ein professionelles, security-gehärtetes Überwachung
 - 💾 **SD-Karten Logging** - Automatische CSV-Speicherung mit Path Protection
 - 📊 **Chart.js Visualisierung** - Interaktive 4h/24h Echtzeit-Graphen für alle Sensoren
 - 📈 **24h Statistiken** - Min/Max/Avg Tracking mit Performance-Metriken
-- 📊 **24h Statistiken** - Min/Max/Avg Tracking mit Performance-Metriken
 - 🌐 **Modernes Web-Dashboard** - Dark Mode, Glassmorphism, PWA Support
 - 🔄 **Intelligente Belüftung** - Automatisch bei Alarm-Zuständen
 - 📡 **Dual-Network** - WiFi + optionales LTE-Modul (SIM7600/SIM800L)
