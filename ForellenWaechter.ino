@@ -28,12 +28,8 @@
  *     - OneWire (by Paul Stoffregen)
  *     - DallasTemperature (by Miles Burton)
  *     - WebSockets (by Markus Sattler)
- *  4. WICHTIG: Header-Dateien kopieren (einmalig!)
- *     Windows Eingabeaufforderung: copy src\*.h .
- *     Linux/Mac Terminal: cp src/*.h .
- *  5. Öffne ForellenWaechter.ino und kompiliere!
- *
- *  PLATFORMIO: Funktioniert direkt ohne Header kopieren!
+ *  4. Öffne ForellenWaechter.ino - Arduino IDE findet die Header automatisch!
+ *  5. Kompilieren und hochladen!
  */
 
 #include <WiFi.h>
@@ -45,27 +41,25 @@
 #include <WebServer.h>
 #include <WebSocketsServer.h>
 
-// Module einbinden
-// HINWEIS für Arduino IDE: Header müssen vorher ins Root kopiert werden (siehe Setup oben)
-// PlatformIO: Funktioniert direkt mit src/ Pfaden
-#include "src/config.h"
-#include "src/power_management.h"
-#include "src/sensors.h"
-#include "src/chart_data.h"
-#include "src/webserver.h"
+// Module einbinden (Arduino IDE findet Header aus src/ automatisch!)
+#include "config.h"
+#include "power_management.h"
+#include "sensors.h"
+#include "chart_data.h"
+#include "webserver.h"
 
 // Security & Network (v2.1)
 #if ENABLE_CREDENTIALS_MANAGER
-#include "src/credentials_manager.h"
+#include "credentials_manager.h"
 #endif
 #if ENABLE_RATE_LIMITING
-#include "src/rate_limiter.h"
+#include "rate_limiter.h"
 #endif
-#include "src/network_manager.h"
+#include "network_manager.h"
 
 // Optional: INA219 Power Monitor
 #if ENABLE_INA219
-#include "src/ina219_monitor.h"
+#include "ina219_monitor.h"
 #endif
 
 // Optional: MQTT

@@ -121,31 +121,16 @@ Arduino IDE ist die einfachste und stabilste Methode für ESP32:
    - **DallasTemperature** (by Miles Burton)
    - **WebSockets** (by Markus Sattler)
 
-#### Schritt 4: Header-Dateien kopieren ⚠️ WICHTIG!
-Arduino IDE kann Header in Unterverzeichnissen nicht automatisch finden.
-
-**Windows (Eingabeaufforderung im Projektverzeichnis):**
-```cmd
-copy src\*.h .
-```
-
-**Linux/Mac (Terminal im Projektverzeichnis):**
-```bash
-cp src/*.h .
-```
-
-Dies kopiert alle Header-Dateien aus `src/` ins Root-Verzeichnis.
-
-#### Schritt 5: Projekt öffnen und konfigurieren
+#### Schritt 4: Projekt öffnen und konfigurieren
 1. Öffne `ForellenWaechter.ino`
-2. Öffne `config.h` (jetzt im Root-Verzeichnis)
+2. Öffne `src/config.h` im selben Verzeichnis
 3. Passe WiFi-Credentials an:
    ```cpp
    const char* STA_SSID = "DeinWLAN";
    const char* STA_PASSWORD = "DeinPasswort";
    ```
 
-#### Schritt 6: Board-Einstellungen
+#### Schritt 5: Board-Einstellungen
 **Tools-Menü konfigurieren:**
 - **Board**: "ESP32 Dev Module"
 - **Upload Speed**: 921600
@@ -155,7 +140,7 @@ Dies kopiert alle Header-Dateien aus `src/` ins Root-Verzeichnis.
 - **Partition Scheme**: Default 4MB with spiffs
 - **Port**: Wähle deinen ESP32 (z.B. COM3, /dev/ttyUSB0)
 
-#### Schritt 7: Hochladen
+#### Schritt 6: Hochladen
 1. ESP32 per USB verbinden
 2. Klicke auf **Upload** (Pfeil-Button)
 3. Warte bis "Hard resetting via RTS pin..." erscheint
