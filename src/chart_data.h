@@ -7,6 +7,7 @@
  * - Kompakte Speichernutzung (~9 KB RAM)
  * - Schnelle JSON-Serialisierung
  * - Automatische Datenrotation
+ * - Persistent Storage (überlebt Reboots!) ✨ NEW v2.1.1
  */
 
 #ifndef CHART_DATA_H

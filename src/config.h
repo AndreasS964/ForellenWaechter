@@ -15,13 +15,15 @@
 #define CONFIG_H
 
 // ========== VERSION ==========
-#define FW_VERSION "2.1.0"
+#define FW_VERSION "2.1.1"
 #define FW_BUILD_DATE __DATE__
 #define BUILD_DATE __DATE__ " " __TIME__
 
 // ========== WIFI KONFIGURATION ==========
 const char* AP_SSID = "ForellenWaechter";
-// SECURITY: Passwörter werden jetzt im CredentialsManager verwaltet!
+const char* AP_PASSWORD = "ForellenWaechter2024"; // Fallback, wird überschrieben wenn CredentialsManager aktiv
+
+// SECURITY: Passwörter werden im CredentialsManager verwaltet!
 // Beim ersten Start werden sichere Passwörter generiert und im EEPROM gespeichert.
 
 // Optional: Station Mode (leer lassen für reinen AP Mode)
