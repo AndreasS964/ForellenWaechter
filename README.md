@@ -2,7 +2,7 @@
 
 Ein hochmodernes ESP32-basiertes IoT-Monitoring-System für Forellenzucht, optimiert für Off-Grid/Solar/Batterie-Betrieb mit professionellen Security-Features.
 
-![Version](https://img.shields.io/badge/version-2.1.0-blue)
+![Version](https://img.shields.io/badge/version-2.1.1-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![ESP32](https://img.shields.io/badge/platform-ESP32-red)
 ![Power](https://img.shields.io/badge/power-67%25%20savings-orange)
@@ -101,34 +101,67 @@ ForellenWächter v2.1 ist ein professionelles, security-gehärtetes Überwachung
 
 Arduino IDE ist die einfachste und stabilste Methode für ESP32:
 
-**Schnellstart:**
-1. [Arduino IDE 2.x herunterladen](https://www.arduino.cc/en/software)
-2. ESP32 Board Manager installieren (Version 2.0.14+)
-3. Bibliotheken installieren (OneWire, DallasTemperature, WebSockets)
-4. `ForellenWaechter_v2.1.ino` öffnen und hochladen
+#### Schritt 1: Arduino IDE installieren
+1. [Arduino IDE 2.x herunterladen](https://www.arduino.cc/en/software) (Version 2.3.6+)
+2. Arduino IDE starten
 
-📖 **Detaillierte Anleitung:** Siehe [ARDUINO_IDE_SETUP.md](ARDUINO_IDE_SETUP.md)
+#### Schritt 2: ESP32 Board Support installieren
+1. Öffne: **Datei → Einstellungen**
+2. Unter "Zusätzliche Boardverwalter-URLs" einfügen:
+   ```
+   https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+   ```
+3. Öffne: **Tools → Board → Boardverwalter**
+4. Suche nach "**esp32**" und installiere "**ESP32 by Espressif Systems**" (Version 3.0.0+)
+
+#### Schritt 3: Bibliotheken installieren
+1. Öffne: **Sketch → Bibliothek einbinden → Bibliotheken verwalten**
+2. Installiere folgende Bibliotheken:
+   - **OneWire** (by Paul Stoffregen)
+   - **DallasTemperature** (by Miles Burton)
+   - **WebSockets** (by Markus Sattler)
+
+#### Schritt 4: Projekt öffnen und konfigurieren
+1. Öffne `ForellenWaechter.ino`
+2. Öffne `src/config.h` im selben Verzeichnis
+3. Passe WiFi-Credentials an:
+   ```cpp
+   const char* STA_SSID = "DeinWLAN";
+   const char* STA_PASSWORD = "DeinPasswort";
+   ```
+
+#### Schritt 5: Board-Einstellungen
+**Tools-Menü konfigurieren:**
+- **Board**: "ESP32 Dev Module"
+- **Upload Speed**: 921600
+- **CPU Frequency**: 80MHz (Power Save!)
+- **Flash Frequency**: 80MHz
+- **Flash Size**: 4MB (32Mb)
+- **Partition Scheme**: Default 4MB with spiffs
+- **Port**: Wähle deinen ESP32 (z.B. COM3, /dev/ttyUSB0)
+
+#### Schritt 6: Hochladen
+1. ESP32 per USB verbinden
+2. Klicke auf **Upload** (Pfeil-Button)
+3. Warte bis "Hard resetting via RTS pin..." erscheint
+4. Öffne **Serial Monitor** (Tools → Serial Monitor, 115200 baud)
+
+**Fertig!** Der ESP32 zeigt nun die generierten Passwörter und die IP-Adresse an.
 
 ---
 
 ### **Alternative: PlatformIO** (Für Fortgeschrittene)
 
-PlatformIO ist eine Alternative für erfahrene Entwickler:
-- ⚡ 3-5x schnellere Kompilierung
-- 🔍 IntelliSense & Auto-Completion
-- 🐛 Echter Debugger
-- 📦 Automatisches Dependency Management
-
-**Quick Start:**
+PlatformIO für erfahrene Entwickler - automatisches Dependency Management:
 
 ```bash
 1. VS Code installieren: https://code.visualstudio.com/
 2. PlatformIO Extension installieren
 3. Projekt klonen: git clone https://github.com/AndreasS964/ForellenWaechter
-4. "Build" Button → Fertig!
+4. Öffne Projekt in VS Code
+5. Passe src/config.h an (WiFi Credentials)
+6. Klicke "PlatformIO: Upload" → Fertig!
 ```
-
-**📚 Detaillierte Anleitung:** [PLATFORMIO_GUIDE.md](PLATFORMIO_GUIDE.md)
 
 ---
 
@@ -420,10 +453,10 @@ forellen/power/power    → 328.6   (optional)
 ## 📈 Roadmap
 
 ### v2.2 (Q1 2025)
-- [ ] Chart.js 24h Graphen
 - [ ] WebSocket Token-Authentifizierung aktivieren
 - [ ] INA219 UI-Integration komplett
 - [ ] DO-Sensor Kalibrierung über UI
+- [ ] Chart.js Export-Funktion (PNG/CSV)
 
 ### v2.3 (Q2 2025)
 - [ ] Multi-Teich Support (bis 4 Teiche)
@@ -480,7 +513,7 @@ MIT-Lizenz - siehe [LICENSE](LICENSE)
 | **Heap-Fragmentierung** | Hoch | Niedrig | **snprintf** ✅ |
 | **Security-Bugs** | 18 kritisch | 0 | **100%** 🔒 |
 
-**Version**: 2.1.0
+**Version**: 2.1.1
 **Letztes Update**: November 2024
 **Status**: ✅ Production Ready & Security Hardened
 
