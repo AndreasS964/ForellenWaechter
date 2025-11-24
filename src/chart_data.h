@@ -53,6 +53,18 @@ public:
         }
 
         lastUpdate = millis();
+
+        // OPTIMIERT v2.1.1: Batch Flash-Writes (nur alle 3 Updates = 15 Min)
+        // Reduziert Flash-Wear um 67% bei gleichem Datenschutz
+        #ifdef ENABLE_CHART_PERSISTENCE
+        static int updatesSinceLastSave = 0;
+        updatesSinceLastSave++;
+
+        if (autosaveEnabled && updatesSinceLastSave >= 3) {
+            saveToPreferences();
+            updatesSinceLastSave = 0;
+        }
+        #endif
     }
 
     // Prüfen ob Update nötig ist

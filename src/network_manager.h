@@ -131,9 +131,10 @@ private:
 
         Serial.println("\n=== LTE-Verbindung herstellen ===");
 
-        // APN konfigurieren
-        String apnCmd = "AT+CGDCONT=1,\"IP\",\"" + String(APN_NAME) + "\"";
-        if (!sendATCommand(apnCmd.c_str(), "OK", 5000)) {
+        // APN konfigurieren (OPTIMIERT: snprintf statt String-Konkatenation)
+        char apnCmd[128];
+        snprintf(apnCmd, sizeof(apnCmd), "AT+CGDCONT=1,\"IP\",\"%s\"", APN_NAME);
+        if (!sendATCommand(apnCmd, "OK", 5000)) {
             Serial.println("✗ APN-Konfiguration fehlgeschlagen");
             return false;
         }
