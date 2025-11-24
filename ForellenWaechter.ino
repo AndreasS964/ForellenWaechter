@@ -28,7 +28,7 @@
  *     - OneWire (by Paul Stoffregen)
  *     - DallasTemperature (by Miles Burton)
  *     - WebSockets (by Markus Sattler)
- *  4. Öffne ForellenWaechter.ino - Arduino IDE findet die Header automatisch!
+ *  4. Alle .h Dateien aus src/ in das gleiche Verzeichnis wie diese .ino Datei kopieren
  *  5. Kompilieren und hochladen!
  */
 
@@ -41,25 +41,25 @@
 #include <WebServer.h>
 #include <WebSocketsServer.h>
 
-// Module einbinden (Arduino IDE findet Header aus src/ automatisch!)
-#include "config.h"
-#include "power_management.h"
-#include "sensors.h"
-#include "chart_data.h"
-#include "webserver.h"
+// Module einbinden (alle .h Dateien müssen im gleichen Ordner sein!)
+#include "src/config.h"
+#include "src/power_management.h"
+#include "src/sensors.h"
+#include "src/chart_data.h"
+#include "src/webserver.h"
 
 // Security & Network (v2.1)
 #if ENABLE_CREDENTIALS_MANAGER
-#include "credentials_manager.h"
+#include "src/credentials_manager.h"
 #endif
 #if ENABLE_RATE_LIMITING
-#include "rate_limiter.h"
+#include "src/rate_limiter.h"
 #endif
-#include "network_manager.h"
+#include "src/network_manager.h"
 
 // Optional: INA219 Power Monitor
 #if ENABLE_INA219
-#include "ina219_monitor.h"
+#include "src/ina219_monitor.h"
 #endif
 
 // Optional: MQTT
