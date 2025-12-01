@@ -1132,10 +1132,12 @@ void loop() {
   // OTA Updates
   if (ENABLE_OTA && ENABLE_WIFI) {
     ArduinoOTA.handle();
+    esp_task_wdt_reset();
   }
 
   // WebServer
   server.handleClient();
+  esp_task_wdt_reset();
 
   // Sensoren auslesen
   if (now - lastSensorRead >= SENSOR_INTERVAL) {
@@ -1143,44 +1145,47 @@ void loop() {
     checkAlarms();
     controlAeration();
     lastSensorRead = now;
+    esp_task_wdt_reset();
   }
-  
+
   // Historie aktualisieren
   if (now - lastHistoryUpdate >= HISTORY_INTERVAL) {
     updateHistory();
     lastHistoryUpdate = now;
   }
-  
+
   // SD-Logging
   if (now - lastLogWrite >= LOG_INTERVAL) {
     logToSD();
     lastLogWrite = now;
   }
-  
+
   // LTE Status prüfen und ggf. reconnect
   if (ENABLE_LTE && now - lastLTECheck >= LTE_CHECK_INTERVAL) {
     bool wasConnected = sysStatus.lteConnected;
     checkLTEConnection();
-    
+
     // Reconnect versuchen wenn Verbindung verloren
     if (wasConnected && !sysStatus.lteConnected) {
       Serial.println("⚠️  LTE Verbindung verloren, versuche Reconnect...");
       initLTE();
+      esp_task_wdt_reset();
     }
-    
+
     lastLTECheck = now;
   }
-  
+
   // Zeit synchronisieren
   if (now - lastNTPSync >= NTP_SYNC_INTERVAL) {
     syncTime();
     lastNTPSync = now;
+    esp_task_wdt_reset();
   }
-  
+
   // Tägliche Zähler zurücksetzen (um Mitternacht)
   static int lastDay = -1;
   struct tm timeinfo;
-  if (getLocalTime(&timeinfo)) {
+  if (getLocalTime(&timeinfo, 1000)) {  // 1 Sekunde Timeout
     if (timeinfo.tm_mday != lastDay) {
       sysStatus.dailyAlarms = 0;
       lastDay = timeinfo.tm_mday;
