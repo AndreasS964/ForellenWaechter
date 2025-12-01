@@ -329,16 +329,16 @@ void initPins() {
   // Inputs
   pinMode(WATER_LEVEL_PIN, INPUT_PULLUP);
   
-  // Relais (alle AUS = HIGH bei Active LOW)
+  // Relais (alle AUS = LOW)
   pinMode(RELAY_1, OUTPUT);
   pinMode(RELAY_2, OUTPUT);
   pinMode(RELAY_3, OUTPUT);
   pinMode(RELAY_4, OUTPUT);
 
-  digitalWrite(RELAY_1, HIGH);
-  digitalWrite(RELAY_2, HIGH);
-  digitalWrite(RELAY_3, HIGH);
-  digitalWrite(RELAY_4, HIGH);
+  digitalWrite(RELAY_1, LOW);
+  digitalWrite(RELAY_2, LOW);
+  digitalWrite(RELAY_3, LOW);
+  digitalWrite(RELAY_4, LOW);
   
   // Startup-Sequenz
   for (int i = 0; i < 3; i++) {
@@ -1003,7 +1003,7 @@ void updateRelays() {
     }
 
     relayStates[i] = targetState;
-    digitalWrite(pins[i], targetState ? LOW : HIGH);  // Active LOW
+    digitalWrite(pins[i], targetState ? HIGH : LOW);  // Invertiert: An=HIGH, Aus=LOW
   }
 }
 
@@ -2172,13 +2172,12 @@ String getHTML() {
       <div class="info-card">
         <h3>🌤️ Wetter</h3>
         <div id="weatherWidget">
-          <p style="color: rgba(255,255,255,0.6); font-size: 0.9em; margin-bottom: 10px;">
+          <div id="weatherDashboard" style="display:none;">
+            <div id="weatherDashboardData" style="font-size: 0.9em;"></div>
+          </div>
+          <p id="weatherConfigHint" style="color: rgba(255,255,255,0.6); font-size: 0.9em; margin-bottom: 10px;">
             PLZ in <a href="/settings" style="color: #0ea5e9;">Einstellungen</a> konfigurieren
           </p>
-          <button onclick="openWeather()" class="relay-btn" style="width: 100%;">
-            <span class="icon">📊</span>
-            <span class="name">24h Vorhersage</span>
-          </button>
         </div>
       </div>
     </div>
@@ -2451,10 +2450,34 @@ String getHTML() {
       }
     }
 
-    // Wetter öffnen
-    function openWeather() {
-      const zip = localStorage.getItem('weatherZip') || '10115';
-      window.open(`https://wttr.in/${zip}?lang=de&format=v2`, '_blank');
+    // Wetter im Dashboard laden
+    async function fetchDashboardWeather() {
+      const zip = localStorage.getItem('weatherZip');
+      if (!zip) return;  // Keine PLZ konfiguriert
+
+      const weatherDashboard = document.getElementById('weatherDashboard');
+      const weatherConfigHint = document.getElementById('weatherConfigHint');
+      const weatherDashboardData = document.getElementById('weatherDashboardData');
+
+      try {
+        weatherDashboardData.innerHTML = '⏳ Lade...';
+        weatherDashboard.style.display = 'block';
+        weatherConfigHint.style.display = 'none';
+
+        const response = await fetch(`https://wttr.in/${zip}?format=j1`);
+        const data = await response.json();
+
+        const current = data.current_condition[0];
+
+        weatherDashboardData.innerHTML = `
+          <p style="margin: 5px 0; font-size: 1.05em;">🌡️ <strong>${current.temp_C}°C</strong> (gefühlt ${current.FeelsLikeC}°C)</p>
+          <p style="margin: 5px 0; font-size: 0.95em;">☁️ ${current.lang_de[0].value}</p>
+          <p style="margin: 5px 0; font-size: 0.9em;">💧 ${current.humidity}% | 💨 ${current.windspeedKmph} km/h</p>
+        `;
+      } catch (e) {
+        weatherDashboard.style.display = 'none';
+        weatherConfigHint.style.display = 'block';
+      }
     }
 
     function setRange(chart, hours) {
@@ -2469,10 +2492,12 @@ String getHTML() {
     fetchSensors();
     fetchStatus();
     fetchHistory();
-    
+    fetchDashboardWeather();
+
     setInterval(fetchSensors, 2000);
     setInterval(fetchStatus, 10000);
     setInterval(fetchHistory, 60000);
+    setInterval(fetchDashboardWeather, 1800000);  // Wetter alle 30 Minuten aktualisieren
   </script>
 </body>
 </html>
@@ -2515,14 +2540,16 @@ String getSettingsHTML() {
     .back-btn {
       font-size: 2.5em;
       text-decoration: none;
-      opacity: 0.8;
+      color: white;
+      opacity: 1;
       transition: all 0.3s;
       cursor: pointer;
       padding: 5px;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
     }
     .back-btn:hover {
-      opacity: 1;
-      transform: translateX(-5px);
+      color: var(--primary);
+      transform: translateX(-5px) scale(1.1);
     }
     h1 { font-size: 1.8em; font-weight: 300; }
     .tabs {
