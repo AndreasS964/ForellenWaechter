@@ -1746,7 +1746,15 @@ String getHTML() {
       border-radius: 20px;
       padding: 25px;
     }
-    
+
+    .chart-container {
+      position: relative;
+      height: 300px;
+      max-height: 300px;
+      width: 100%;
+      overflow: hidden;
+    }
+
     .chart-card h3 {
       font-size: 1em;
       font-weight: 500;
@@ -1881,6 +1889,7 @@ String getHTML() {
       .cards-grid { grid-template-columns: repeat(2, 1fr); }
       .charts-section { grid-template-columns: 1fr; }
       .chart-card { min-width: 0; }
+      .chart-container { height: 250px; max-height: 250px; }
     }
     
     /* Loading */
@@ -1987,9 +1996,11 @@ String getHTML() {
             <button class="chart-tab" onclick="setRange('temp', 168)">7d</button>
           </div>
         </h3>
-        <canvas id="tempChart" height="200"></canvas>
+        <div class="chart-container">
+          <canvas id="tempChart"></canvas>
+        </div>
       </div>
-      
+
       <div class="chart-card">
         <h3>
           🧪 Wasserqualität
@@ -1998,7 +2009,9 @@ String getHTML() {
             <button class="chart-tab" onclick="setRange('quality', 168)">7d</button>
           </div>
         </h3>
-        <canvas id="qualityChart" height="200"></canvas>
+        <div class="chart-container">
+          <canvas id="qualityChart"></canvas>
+        </div>
       </div>
     </div>
     
