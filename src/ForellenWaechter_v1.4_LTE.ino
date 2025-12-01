@@ -1860,7 +1860,14 @@ String getHTML() {
     
     .relay-btn:hover { background: rgba(255,255,255,0.2); }
     .relay-btn.active { background: var(--secondary); border-color: var(--secondary); }
-    
+    .relay-btn.auto {
+      opacity: 0.6;
+      cursor: not-allowed;
+      background: rgba(14,165,233,0.2);
+      border-color: rgba(14,165,233,0.4);
+    }
+    .relay-btn.auto:hover { background: rgba(14,165,233,0.2); }
+
     .relay-btn .icon { font-size: 1.5em; }
     .relay-btn .name { font-size: 0.8em; }
     
@@ -1931,7 +1938,7 @@ String getHTML() {
     <header>
       <div class="logo">🐟</div>
       <h1>ForellenWächter</h1>
-      <p class="subtitle">IoT Monitoring für Aquakultur • Powered by Wasserkraft ⚡</p>
+      <p class="subtitle">IoT Monitoring für Aquakultur</p>
     </header>
     
     <div class="alarm-banner" id="alarmBanner">
@@ -2074,20 +2081,20 @@ String getHTML() {
         <h3>🎛️ Steuerung</h3>
         <div class="controls-grid">
           <button class="relay-btn" id="relay1" onclick="toggleRelay(1)">
-            <span class="icon">💨</span>
-            <span class="name">Belüftung</span>
-          </button>
-          <button class="relay-btn" id="relay2" onclick="toggleRelay(2)">
             <span class="icon">🔔</span>
             <span class="name">Alarm</span>
           </button>
-          <button class="relay-btn" id="relay3" onclick="toggleRelay(3)">
+          <button class="relay-btn" id="relay2" onclick="toggleRelay(2)">
             <span class="icon">⚡</span>
             <span class="name">Reserve 1</span>
           </button>
-          <button class="relay-btn" id="relay4" onclick="toggleRelay(4)">
+          <button class="relay-btn" id="relay3" onclick="toggleRelay(3)">
             <span class="icon">⚡</span>
             <span class="name">Reserve 2</span>
+          </button>
+          <button class="relay-btn auto" id="relay4" title="Automatische Steuerung">
+            <span class="icon">💨</span>
+            <span class="name">Belüftung (Auto)</span>
           </button>
         </div>
       </div>
@@ -2170,14 +2177,22 @@ String getHTML() {
             yAxisID: 'y1',
             tension: 0.4,
             borderWidth: 2
+          }, {
+            label: 'TDS ppm',
+            data: [],
+            borderColor: '#f59e0b',
+            yAxisID: 'y2',
+            tension: 0.4,
+            borderWidth: 2
           }]
         },
         options: {
           ...defaultOptions,
           scales: {
             ...defaultOptions.scales,
-            y: { ...defaultOptions.scales.y, position: 'left', min: 5, max: 10 },
-            y1: { ...defaultOptions.scales.y, position: 'right', min: 0, max: 15 }
+            y: { ...defaultOptions.scales.y, position: 'left', min: 5, max: 10, title: { display: true, text: 'pH', color: 'rgba(255,255,255,0.6)' } },
+            y1: { ...defaultOptions.scales.y, position: 'right', min: 0, max: 15, grid: { display: false }, title: { display: true, text: 'O₂ (mg/L)', color: 'rgba(255,255,255,0.6)' } },
+            y2: { ...defaultOptions.scales.y, position: 'right', min: 0, max: 500, grid: { display: false }, title: { display: true, text: 'TDS (ppm)', color: 'rgba(255,255,255,0.6)' } }
           }
         }
       });
@@ -2302,6 +2317,7 @@ String getHTML() {
       qualityChart.data.labels = labels;
       qualityChart.data.datasets[0].data = data.ph;
       qualityChart.data.datasets[1].data = data.do || [];
+      qualityChart.data.datasets[2].data = data.tds || [];
       qualityChart.update('none');
     }
     
@@ -2317,13 +2333,18 @@ String getHTML() {
     
     // Relais steuern
     async function toggleRelay(num) {
+      // Relay 4 (Belüftung) ist automatisch gesteuert
+      if (num === 4) {
+        return;
+      }
+
       const newState = !relayStates[num - 1];
-      
+
       try {
         const res = await fetch(`/api/relay?relay=${num}&state=${newState ? 1 : 0}`, {
           method: 'POST'
         });
-        
+
         if (res.ok) {
           relayStates[num - 1] = newState;
           document.getElementById(`relay${num}`).classList.toggle('active', newState);
