@@ -109,19 +109,19 @@ struct TroutParameters {
 // Analog Sensoren
 #define PH_PIN 34
 #define TDS_PIN 35
-#define DO_PIN 32                    // Dissolved Oxygen (optional)
+#define DO_PIN 36                    // Dissolved Oxygen (geändert von 32, da 32 = Relay 1)
 
 // Digital I/O
-#define WATER_LEVEL_PIN 33
+#define WATER_LEVEL_PIN 39           // Float Switch (geändert von 33, da 33 = Relay 2)
 #define STATUS_LED 2
 #define ALARM_LED 13                 // Externe Alarm-LED (rot)
 #define BUZZER_PIN 15
 
-// Relais (Active LOW)
-#define RELAY_AERATION 26
-#define RELAY_ALARM 27
-#define RELAY_SPARE1 14
-#define RELAY_SPARE2 12
+// Relais (Active LOW) - Laut Hersteller-Handbuch
+#define RELAY_1 32                   // GPIO32
+#define RELAY_2 33                   // GPIO33
+#define RELAY_3 23                   // GPIO23
+#define RELAY_4 26                   // GPIO26
 
 // SD-Karte
 #define SD_CS 5
@@ -237,6 +237,10 @@ unsigned long lastHistoryUpdate = 0;
 unsigned long lastNTPSync = 0;
 unsigned long startTime = 0;
 
+// Relay Modi: 0=Auto, 1=An, 2=Aus
+uint8_t relayModes[4] = {2, 2, 2, 0};  // 1-3: Aus, 4: Auto (Belüftung)
+bool relayStates[4] = {false, false, false, false};
+
 // ═══════════════════════════════════════════════════════════════════════════════════
 // SETUP
 // ═══════════════════════════════════════════════════════════════════════════════════
@@ -324,15 +328,15 @@ void initPins() {
   pinMode(WATER_LEVEL_PIN, INPUT_PULLUP);
   
   // Relais (alle AUS = HIGH bei Active LOW)
-  pinMode(RELAY_AERATION, OUTPUT);
-  pinMode(RELAY_ALARM, OUTPUT);
-  pinMode(RELAY_SPARE1, OUTPUT);
-  pinMode(RELAY_SPARE2, OUTPUT);
-  
-  digitalWrite(RELAY_AERATION, HIGH);
-  digitalWrite(RELAY_ALARM, HIGH);
-  digitalWrite(RELAY_SPARE1, HIGH);
-  digitalWrite(RELAY_SPARE2, HIGH);
+  pinMode(RELAY_1, OUTPUT);
+  pinMode(RELAY_2, OUTPUT);
+  pinMode(RELAY_3, OUTPUT);
+  pinMode(RELAY_4, OUTPUT);
+
+  digitalWrite(RELAY_1, HIGH);
+  digitalWrite(RELAY_2, HIGH);
+  digitalWrite(RELAY_3, HIGH);
+  digitalWrite(RELAY_4, HIGH);
   
   // Startup-Sequenz
   for (int i = 0; i < 3; i++) {
@@ -956,22 +960,49 @@ void checkAlarms() {
 
 void controlAeration() {
   bool shouldActivate = false;
-  
+
   // Automatische Belüftung bei:
   if (sensors.waterTemp > troutParams.tempMax) {
     shouldActivate = true;
   }
-  
+
   if (ENABLE_DO_SENSOR && sensors.dissolvedOxygen < troutParams.doOptimal) {
     shouldActivate = true;
   }
-  
+
   if (sensors.ph < troutParams.phMin || sensors.ph > troutParams.phMax) {
     shouldActivate = true;
   }
-  
+
   sensors.aerationActive = shouldActivate;
-  digitalWrite(RELAY_AERATION, shouldActivate ? LOW : HIGH);
+  // Belüftungs-Relay wird in updateRelays() gesetzt
+}
+
+void updateRelays() {
+  // Für jedes Relay: Modus prüfen und entsprechend setzen
+  int pins[4] = {RELAY_1, RELAY_2, RELAY_3, RELAY_4};
+
+  for (int i = 0; i < 4; i++) {
+    bool targetState = false;
+
+    switch (relayModes[i]) {
+      case 0:  // Auto
+        if (i == 3) {  // Relay 4 = Belüftung Auto
+          targetState = sensors.aerationActive;
+        }
+        // Andere Relays: Auto = Aus (keine Auto-Logik)
+        break;
+      case 1:  // An
+        targetState = true;
+        break;
+      case 2:  // Aus
+        targetState = false;
+        break;
+    }
+
+    relayStates[i] = targetState;
+    digitalWrite(pins[i], targetState ? LOW : HIGH);  // Active LOW
+  }
 }
 
 void soundAlarm() {
@@ -1144,6 +1175,7 @@ void loop() {
     readAllSensors();
     checkAlarms();
     controlAeration();
+    updateRelays();  // Relays basierend auf Modi aktualisieren
     lastSensorRead = now;
     esp_task_wdt_reset();
   }
@@ -1375,29 +1407,26 @@ void handleAPISettingsPost() {
 }
 
 void handleAPIRelay() {
-  if (!server.hasArg("relay") || !server.hasArg("state")) {
-    server.send(400, "application/json", "{\"error\":\"Missing parameters\"}");
+  if (!server.hasArg("relay")) {
+    server.send(400, "application/json", "{\"error\":\"Missing relay parameter\"}");
     return;
   }
-  
+
   int relay = server.arg("relay").toInt();
-  bool state = server.arg("state") == "1";
-  
-  int pin = -1;
-  switch (relay) {
-    case 1: pin = RELAY_AERATION; break;
-    case 2: pin = RELAY_ALARM; break;
-    case 3: pin = RELAY_SPARE1; break;
-    case 4: pin = RELAY_SPARE2; break;
-  }
-  
-  if (pin < 0) {
-    server.send(400, "application/json", "{\"error\":\"Invalid relay\"}");
+  if (relay < 1 || relay > 4) {
+    server.send(400, "application/json", "{\"error\":\"Invalid relay number\"}");
     return;
   }
-  
-  digitalWrite(pin, state ? LOW : HIGH);
-  server.send(200, "application/json", "{\"success\":true}");
+
+  // Toggle-Modus: Auto → An → Aus → Auto
+  relayModes[relay - 1]++;
+  if (relayModes[relay - 1] > 2) relayModes[relay - 1] = 0;
+
+  // Sofort anwenden
+  updateRelays();
+
+  String response = "{\"relay\":" + String(relay) + ",\"mode\":" + String(relayModes[relay - 1]) + "}";
+  server.send(200, "application/json", response);
 }
 
 void handleAPITestEmail() {
@@ -1883,16 +1912,25 @@ String getHTML() {
     
     .relay-btn:hover { background: rgba(255,255,255,0.2); }
     .relay-btn.active { background: var(--secondary); border-color: var(--secondary); }
-    .relay-btn.auto {
-      opacity: 0.6;
-      cursor: not-allowed;
-      background: rgba(14,165,233,0.2);
-      border-color: rgba(14,165,233,0.4);
-    }
-    .relay-btn.auto:hover { background: rgba(14,165,233,0.2); }
 
     .relay-btn .icon { font-size: 1.5em; }
-    .relay-btn .name { font-size: 0.8em; }
+    .relay-btn .name { font-size: 0.8em; font-weight: 500; }
+    .relay-btn .mode-label {
+      font-size: 0.7em;
+      margin-top: 5px;
+      padding: 3px 8px;
+      border-radius: 10px;
+      font-weight: 500;
+    }
+
+    .relay-btn.mode-auto { background: rgba(14,165,233,0.3); border-color: rgba(14,165,233,0.5); }
+    .relay-btn.mode-auto .mode-label { background: rgba(14,165,233,0.5); color: white; }
+
+    .relay-btn.mode-on { background: rgba(16,185,129,0.3); border-color: rgba(16,185,129,0.5); }
+    .relay-btn.mode-on .mode-label { background: rgba(16,185,129,0.5); color: white; }
+
+    .relay-btn.mode-off { opacity: 0.5; }
+    .relay-btn.mode-off .mode-label { background: rgba(255,255,255,0.2); color: rgba(255,255,255,0.7); }
     
     /* Alarm Banner */
     .alarm-banner {
@@ -2087,7 +2125,7 @@ String getHTML() {
         <h3>⚙️ System</h3>
         <div class="info-row">
           <span class="info-label">Firmware</span>
-          <span class="info-value" id="firmware">v1.4.0</span>
+          <span class="info-value" id="firmware">v1.5.0</span>
         </div>
         <div class="info-row">
           <span class="info-label">Free Heap</span>
@@ -2106,21 +2144,25 @@ String getHTML() {
       <div class="info-card">
         <h3>🎛️ Steuerung</h3>
         <div class="controls-grid">
-          <button class="relay-btn" id="relay1" onclick="toggleRelay(1)">
+          <button class="relay-btn mode-off" id="relay1" onclick="toggleRelay(1)">
             <span class="icon">🔔</span>
             <span class="name">Alarm</span>
+            <span class="mode-label">Aus</span>
           </button>
-          <button class="relay-btn" id="relay2" onclick="toggleRelay(2)">
+          <button class="relay-btn mode-off" id="relay2" onclick="toggleRelay(2)">
             <span class="icon">⚡</span>
             <span class="name">Reserve 1</span>
+            <span class="mode-label">Aus</span>
           </button>
-          <button class="relay-btn" id="relay3" onclick="toggleRelay(3)">
+          <button class="relay-btn mode-off" id="relay3" onclick="toggleRelay(3)">
             <span class="icon">⚡</span>
             <span class="name">Reserve 2</span>
+            <span class="mode-label">Aus</span>
           </button>
-          <button class="relay-btn auto" id="relay4" title="Automatische Steuerung">
+          <button class="relay-btn mode-auto" id="relay4" onclick="toggleRelay(4)">
             <span class="icon">💨</span>
-            <span class="name">Belüftung (Auto)</span>
+            <span class="name">Belüftung</span>
+            <span class="mode-label">Auto</span>
           </button>
         </div>
       </div>
@@ -2140,15 +2182,15 @@ String getHTML() {
     </div>
 
     <footer>
-      ForellenWächter v1.4 LTE Edition •
+      ForellenWächter v1.5 LTE Edition •
       <a href="/api/sensors">API</a> •
-      © 2024 Andreas
+      © 2024 Andreas Sika
     </footer>
   </div>
   
   <script>
     let tempChart, qualityChart;
-    let relayStates = [false, false, false, false];
+    let relayModes = [2, 2, 2, 0];  // 0=Auto, 1=An, 2=Aus
     
     // Charts initialisieren
     function initCharts() {
@@ -2370,26 +2412,40 @@ String getHTML() {
       return `${m}m`;
     }
     
-    // Relais steuern
+    // Relais steuern - Toggle durch Modi: Auto → An → Aus → Auto
     async function toggleRelay(num) {
-      // Relay 4 (Belüftung) ist automatisch gesteuert
-      if (num === 4) {
-        return;
-      }
-
-      const newState = !relayStates[num - 1];
-
       try {
-        const res = await fetch(`/api/relay?relay=${num}&state=${newState ? 1 : 0}`, {
+        const res = await fetch(`/api/relay?relay=${num}`, {
           method: 'POST'
         });
 
         if (res.ok) {
-          relayStates[num - 1] = newState;
-          document.getElementById(`relay${num}`).classList.toggle('active', newState);
+          const data = await res.json();
+          relayModes[num - 1] = data.mode;
+          updateRelayButton(num, data.mode);
         }
       } catch (e) {
         console.error('Relay error:', e);
+      }
+    }
+
+    function updateRelayButton(num, mode) {
+      const btn = document.getElementById(`relay${num}`);
+      const label = btn.querySelector('.mode-label');
+
+      // Alle mode-* Klassen entfernen
+      btn.classList.remove('mode-auto', 'mode-on', 'mode-off');
+
+      // Neue Klasse und Text setzen
+      if (mode === 0) {
+        btn.classList.add('mode-auto');
+        label.textContent = 'Auto';
+      } else if (mode === 1) {
+        btn.classList.add('mode-on');
+        label.textContent = 'An';
+      } else {
+        btn.classList.add('mode-off');
+        label.textContent = 'Aus';
       }
     }
 
