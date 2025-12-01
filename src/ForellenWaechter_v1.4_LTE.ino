@@ -33,6 +33,7 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #include <ESPmDNS.h>
+#include <ArduinoOTA.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <SD.h>
@@ -58,6 +59,7 @@
 #define ENABLE_EMAIL_ALERTS true     // E-Mail Benachrichtigungen
 #define ENABLE_DO_SENSOR false       // Dissolved Oxygen Sensor
 #define ENABLE_SD_LOGGING true       // SD-Karten Logging
+#define ENABLE_OTA true              // Over-The-Air Updates
 
 // --- WiFi (lokaler Zugriff) ---
 const char* AP_SSID = "ForellenWaechter";
@@ -65,6 +67,7 @@ const char* AP_PASSWORD = "YourPassword123";  // ÄNDERN!
 const char* STA_SSID = "";           // Optional: Heimnetz
 const char* STA_PASSWORD = "";
 const char* MDNS_NAME = "forellenwaechter";
+const char* OTA_PASSWORD = "forellenadmin123";  // ÄNDERN! OTA Update Passwort
 
 // --- LTE Konfiguration ---
 #define LTE_APN "internet"           // APN deines Providers (z.B. "internet.t-mobile")
@@ -142,6 +145,14 @@ bool waterSensorFound = false;
 bool airSensorFound = false;
 
 // ═══════════════════════════════════════════════════════════════════════════════════
+// FORWARD DECLARATIONS
+// ═══════════════════════════════════════════════════════════════════════════════════
+
+String getHTML();
+String getCSS();
+String getJS();
+
+// ═══════════════════════════════════════════════════════════════════════════════════
 // DATENSTRUKTUREN
 // ═══════════════════════════════════════════════════════════════════════════════════
 
@@ -171,8 +182,39 @@ struct SystemStatus {
   unsigned long lastEmailSent = 0;
   int alarmCount = 0;
   int dailyAlarms = 0;
-  String firmwareVersion = "1.4.0";
+  String firmwareVersion = "1.4.1";
 } sysStatus;
+
+// Kalibrierungsdaten (2-Punkt Kalibrierung)
+#define EEPROM_SIZE 256
+#define EEPROM_MAGIC 0xF155  // "FISS" (Fisch) als Magic Number
+
+struct CalibrationData {
+  uint16_t magic = EEPROM_MAGIC;
+
+  // pH Kalibrierung (2-Punkt)
+  float ph_slope = 3.5;              // Standard-Steigung
+  float ph_offset = 0.0;             // Standard-Offset
+  bool ph_calibrated = false;
+  int ph_buffer1_adc = 0;            // pH 4.0 Pufferlösung ADC-Wert
+  int ph_buffer2_adc = 0;            // pH 7.0 Pufferlösung ADC-Wert
+  float ph_buffer1_value = 4.0;
+  float ph_buffer2_value = 7.0;
+
+  // TDS Kalibrierung
+  float tds_factor = 0.5;            // Standard-Faktor
+  bool tds_calibrated = false;
+  int tds_reference_adc = 0;         // z.B. 1413 µS/cm Lösung
+  float tds_reference_value = 1413.0;
+
+  // DO Kalibrierung (optional)
+  float do_slope = 1.0;
+  float do_offset = 0.0;
+  bool do_calibrated = false;
+
+  // Checksumme
+  uint8_t checksum = 0;
+} calibration;
 
 // Historie für Charts
 #define HISTORY_SIZE 288             // 24h bei 5min Intervall
@@ -202,23 +244,28 @@ unsigned long startTime = 0;
 void setup() {
   Serial.begin(115200);
   delay(500);
-  
+
   printBanner();
   startTime = millis();
-  
+
   initWatchdog();
   initPins();
+  initEEPROM();
+  loadCalibration();
   initSensors();
   initSDCard();
   
   if (ENABLE_WIFI) {
     initWiFi();
+    if (ENABLE_OTA) {
+      initOTA();
+    }
   }
-  
+
   if (ENABLE_LTE) {
     initLTE();
   }
-  
+
   initWebServer();
   syncTime();
   
@@ -361,6 +408,106 @@ void initWiFi() {
     MDNS.addService("http", "tcp", 80);
     Serial.printf("✅ mDNS: http://%s.local\n", MDNS_NAME);
   }
+}
+
+void initOTA() {
+  Serial.println("🔄 OTA Updates aktiviert...");
+
+  ArduinoOTA.setHostname(MDNS_NAME);
+  ArduinoOTA.setPassword(OTA_PASSWORD);
+
+  ArduinoOTA.onStart([]() {
+    String type = (ArduinoOTA.getCommand() == U_FLASH) ? "Sketch" : "Filesystem";
+    Serial.println("\n🔄 OTA Update gestartet: " + type);
+
+    // SD-Karte sicher beenden
+    if (sysStatus.sdCardOK) {
+      SD.end();
+    }
+  });
+
+  ArduinoOTA.onEnd([]() {
+    Serial.println("\n✅ OTA Update abgeschlossen!");
+  });
+
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    static unsigned int lastPercent = 0;
+    unsigned int percent = (progress / (total / 100));
+    if (percent != lastPercent && percent % 10 == 0) {
+      Serial.printf("   Progress: %u%%\n", percent);
+      lastPercent = percent;
+    }
+  });
+
+  ArduinoOTA.onError([](ota_error_t error) {
+    Serial.printf("❌ OTA Fehler [%u]: ", error);
+    if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
+    else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+    else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+    else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+    else if (error == OTA_END_ERROR) Serial.println("End Failed");
+  });
+
+  ArduinoOTA.begin();
+  Serial.println("✅ OTA bereit!");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════════
+// EEPROM & KALIBRIERUNG
+// ═══════════════════════════════════════════════════════════════════════════════════
+
+void initEEPROM() {
+  if (!EEPROM.begin(EEPROM_SIZE)) {
+    Serial.println("⚠️  EEPROM Init fehlgeschlagen!");
+    return;
+  }
+  Serial.println("✅ EEPROM initialisiert");
+}
+
+uint8_t calculateChecksum(const CalibrationData& data) {
+  uint8_t checksum = 0;
+  const uint8_t* ptr = (const uint8_t*)&data;
+  for (size_t i = 0; i < sizeof(CalibrationData) - 1; i++) {  // -1 um checksum selbst auszulassen
+    checksum ^= ptr[i];
+  }
+  return checksum;
+}
+
+void loadCalibration() {
+  Serial.println("📂 Lade Kalibrierungsdaten...");
+
+  EEPROM.get(0, calibration);
+
+  if (calibration.magic != EEPROM_MAGIC) {
+    Serial.println("   Keine gültigen Daten, verwende Standardwerte");
+    calibration.magic = EEPROM_MAGIC;
+    saveCalibration();
+    return;
+  }
+
+  uint8_t checksum = calculateChecksum(calibration);
+  if (checksum != calibration.checksum) {
+    Serial.println("⚠️  Checksumme ungültig, verwende Standardwerte");
+    return;
+  }
+
+  Serial.println("✅ Kalibrierungsdaten geladen");
+  if (calibration.ph_calibrated) {
+    Serial.println("   pH: kalibriert ✓");
+  }
+  if (calibration.tds_calibrated) {
+    Serial.println("   TDS: kalibriert ✓");
+  }
+  if (ENABLE_DO_SENSOR && calibration.do_calibrated) {
+    Serial.println("   DO: kalibriert ✓");
+  }
+}
+
+void saveCalibration() {
+  calibration.checksum = calculateChecksum(calibration);
+  EEPROM.put(0, calibration);
+  EEPROM.commit();
+  Serial.println("💾 Kalibrierungsdaten gespeichert");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════════
@@ -644,11 +791,16 @@ void readPH() {
     delay(10);
   }
   float rawValue = sum / 10.0;
-  float voltage = rawValue * 3.3 / 4095.0;
-  
-  // pH Kalibrierung (anpassen!)
-  // Typisch: pH 7 = 2.5V, pH 4 = 3.0V, pH 10 = 2.0V
-  sensors.ph = 7.0 + (2.5 - voltage) * 3.5;
+
+  // Kalibrierte Messung verwenden
+  if (calibration.ph_calibrated) {
+    sensors.ph = (calibration.ph_slope * rawValue) + calibration.ph_offset;
+  } else {
+    // Fallback: Standard-Kalibrierung
+    float voltage = rawValue * 3.3 / 4095.0;
+    sensors.ph = 7.0 + (2.5 - voltage) * 3.5;
+  }
+
   sensors.ph = constrain(sensors.ph, 0.0, 14.0);
 }
 
@@ -659,15 +811,22 @@ void readTDS() {
     delay(10);
   }
   float rawValue = sum / 10.0;
-  float voltage = rawValue * 3.3 / 4095.0;
-  
-  // Temperaturkompensation
-  float tempCoeff = 1.0 + 0.02 * (sensors.waterTemp - 25.0);
-  float compVoltage = voltage / tempCoeff;
-  
-  sensors.tds = (133.42 * pow(compVoltage, 3) - 
-                 255.86 * pow(compVoltage, 2) + 
-                 857.39 * compVoltage) * 0.5;
+
+  // Kalibrierte Messung verwenden
+  if (calibration.tds_calibrated) {
+    // Einfache Faktoren-Multiplikation mit Temperaturkompensation
+    float tempCoeff = 1.0 + 0.02 * (sensors.waterTemp - 25.0);
+    sensors.tds = (rawValue * calibration.tds_factor) / tempCoeff;
+  } else {
+    // Fallback: Standard-Formel
+    float voltage = rawValue * 3.3 / 4095.0;
+    float tempCoeff = 1.0 + 0.02 * (sensors.waterTemp - 25.0);
+    float compVoltage = voltage / tempCoeff;
+    sensors.tds = (133.42 * pow(compVoltage, 3) -
+                   255.86 * pow(compVoltage, 2) +
+                   857.39 * compVoltage) * 0.5;
+  }
+
   sensors.tds = constrain(sensors.tds, 0.0, 1000.0);
 }
 
@@ -957,10 +1116,18 @@ void updateStatusLED() {
 
 void loop() {
   esp_task_wdt_reset();
-  
+
   unsigned long now = millis();
   sysStatus.uptime = (now - startTime) / 1000;
-  
+
+  // OTA Updates
+  if (ENABLE_OTA && ENABLE_WIFI) {
+    ArduinoOTA.handle();
+  }
+
+  // WebServer
+  server.handleClient();
+
   // Sensoren auslesen
   if (now - lastSensorRead >= SENSOR_INTERVAL) {
     readAllSensors();
@@ -1046,6 +1213,10 @@ void initWebServer() {
   server.on("/api/settings", HTTP_POST, handleAPISettingsPost);
   server.on("/api/relay", HTTP_POST, handleAPIRelay);
   server.on("/api/test-email", HTTP_POST, handleAPITestEmail);
+  server.on("/api/calibration", HTTP_GET, handleAPICalibrationGet);
+  server.on("/api/calibration/ph", HTTP_POST, handleAPICalibrationPH);
+  server.on("/api/calibration/tds", HTTP_POST, handleAPICalibrationTDS);
+  server.on("/api/calibration/reset", HTTP_POST, handleAPICalibrationReset);
   
   // Statische Ressourcen
   server.on("/style.css", HTTP_GET, handleCSS);
@@ -1217,6 +1388,134 @@ void handleAPIRelay() {
 void handleAPITestEmail() {
   sendEmailAlert("Test-Email", "Dies ist eine Test-Nachricht vom ForellenWächter.");
   server.send(200, "application/json", "{\"success\":true}");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════════
+// KALIBRIERUNGS-API
+// ═══════════════════════════════════════════════════════════════════════════════════
+
+void handleAPICalibrationGet() {
+  StaticJsonDocument<512> doc;
+
+  doc["ph"]["calibrated"] = calibration.ph_calibrated;
+  doc["ph"]["slope"] = calibration.ph_slope;
+  doc["ph"]["offset"] = calibration.ph_offset;
+  doc["ph"]["buffer1_adc"] = calibration.ph_buffer1_adc;
+  doc["ph"]["buffer2_adc"] = calibration.ph_buffer2_adc;
+  doc["ph"]["buffer1_value"] = calibration.ph_buffer1_value;
+  doc["ph"]["buffer2_value"] = calibration.ph_buffer2_value;
+
+  doc["tds"]["calibrated"] = calibration.tds_calibrated;
+  doc["tds"]["factor"] = calibration.tds_factor;
+  doc["tds"]["reference_adc"] = calibration.tds_reference_adc;
+  doc["tds"]["reference_value"] = calibration.tds_reference_value;
+
+  if (ENABLE_DO_SENSOR) {
+    doc["do"]["calibrated"] = calibration.do_calibrated;
+    doc["do"]["slope"] = calibration.do_slope;
+    doc["do"]["offset"] = calibration.do_offset;
+  }
+
+  String response;
+  serializeJson(doc, response);
+  server.send(200, "application/json", response);
+}
+
+void handleAPICalibrationPH() {
+  if (!server.hasArg("plain")) {
+    server.send(400, "application/json", "{\"error\":\"No body\"}");
+    return;
+  }
+
+  StaticJsonDocument<256> doc;
+  DeserializationError error = deserializeJson(doc, server.arg("plain"));
+
+  if (error) {
+    server.send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
+    return;
+  }
+
+  int step = doc["step"];  // 1 oder 2
+  float buffer_value = doc["buffer_value"];  // z.B. 4.0 oder 7.0
+  int adc_reading = analogRead(PH_PIN);
+
+  if (step == 1) {
+    calibration.ph_buffer1_adc = adc_reading;
+    calibration.ph_buffer1_value = buffer_value;
+    Serial.printf("pH Kalibrierung Schritt 1: ADC=%d, pH=%.1f\n", adc_reading, buffer_value);
+    server.send(200, "application/json", "{\"success\":true,\"message\":\"Schritt 1 gespeichert\",\"adc\":" + String(adc_reading) + "}");
+  }
+  else if (step == 2) {
+    calibration.ph_buffer2_adc = adc_reading;
+    calibration.ph_buffer2_value = buffer_value;
+
+    // Berechne Slope und Offset (y = mx + b)
+    float m = (calibration.ph_buffer2_value - calibration.ph_buffer1_value) /
+              (calibration.ph_buffer2_adc - calibration.ph_buffer1_adc);
+    float b = calibration.ph_buffer1_value - (m * calibration.ph_buffer1_adc);
+
+    calibration.ph_slope = m;
+    calibration.ph_offset = b;
+    calibration.ph_calibrated = true;
+
+    saveCalibration();
+
+    Serial.printf("pH Kalibrierung Schritt 2: ADC=%d, pH=%.1f\n", adc_reading, buffer_value);
+    Serial.printf("✅ pH kalibriert: Slope=%.4f, Offset=%.4f\n", m, b);
+
+    server.send(200, "application/json", "{\"success\":true,\"message\":\"Kalibrierung abgeschlossen\",\"slope\":" + String(m, 4) + ",\"offset\":" + String(b, 4) + "}");
+  }
+  else {
+    server.send(400, "application/json", "{\"error\":\"Invalid step (1 or 2)\"}");
+  }
+}
+
+void handleAPICalibrationTDS() {
+  if (!server.hasArg("plain")) {
+    server.send(400, "application/json", "{\"error\":\"No body\"}");
+    return;
+  }
+
+  StaticJsonDocument<256> doc;
+  DeserializationError error = deserializeJson(doc, server.arg("plain"));
+
+  if (error) {
+    server.send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
+    return;
+  }
+
+  float reference_value = doc["reference_value"];  // z.B. 1413 ppm (1413 µS/cm Lösung)
+  int adc_reading = analogRead(TDS_PIN);
+
+  calibration.tds_reference_adc = adc_reading;
+  calibration.tds_reference_value = reference_value;
+  calibration.tds_factor = reference_value / adc_reading;
+  calibration.tds_calibrated = true;
+
+  saveCalibration();
+
+  Serial.printf("✅ TDS kalibriert: ADC=%d, Referenz=%.0f ppm, Faktor=%.4f\n",
+                adc_reading, reference_value, calibration.tds_factor);
+
+  server.send(200, "application/json", "{\"success\":true,\"message\":\"TDS kalibriert\",\"factor\":" + String(calibration.tds_factor, 4) + "}");
+}
+
+void handleAPICalibrationReset() {
+  calibration.ph_calibrated = false;
+  calibration.ph_slope = 3.5;
+  calibration.ph_offset = 0.0;
+
+  calibration.tds_calibrated = false;
+  calibration.tds_factor = 0.5;
+
+  calibration.do_calibrated = false;
+  calibration.do_slope = 1.0;
+  calibration.do_offset = 0.0;
+
+  saveCalibration();
+
+  Serial.println("🔄 Kalibrierung zurückgesetzt");
+  server.send(200, "application/json", "{\"success\":true,\"message\":\"Kalibrierung zur\\u00fcckgesetzt\"}");
 }
 
 void handleCSS() {

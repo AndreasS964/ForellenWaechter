@@ -17,7 +17,7 @@ ForellenWächter ist ein umfassendes Monitoring-System für Forellenaufzuchtanla
 **Anwendung:** Forellenzucht-Monitoring
 **Stromversorgung:** Flexibel (Netz/Batterie/Wasserkraft) ⚡💧
 
-### ✨ Features v1.4
+### ✨ Features v1.4.1
 
 | Feature | Beschreibung |
 |---------|--------------|
@@ -32,6 +32,8 @@ ForellenWächter ist ein umfassendes Monitoring-System für Forellenaufzuchtanla
 | 💾 **SD-Logging** | CSV-Export für Langzeitanalyse |
 | 💨 **Auto-Belüftung** | Aktiviert bei kritischen Werten |
 | 🔄 **REST API** | Für externe Integrationen |
+| 🎯 **Kalibrierung** | 2-Punkt pH & TDS Kalibrierung ✨ NEU |
+| 🔄 **OTA Updates** | Drahtlose Firmware-Updates ✨ NEU |
 
 ---
 
@@ -209,6 +211,10 @@ Ausführlich: [docs/V1.4_LTE_GUIDE.md](docs/V1.4_LTE_GUIDE.md)
 | `/api/settings` | GET/POST | Grenzwerte lesen/setzen |
 | `/api/relay` | POST | Relais steuern |
 | `/api/test-email` | POST | Test-E-Mail senden |
+| `/api/calibration` | GET | Kalibrierungsdaten abrufen ✨ |
+| `/api/calibration/ph` | POST | pH-Sensor kalibrieren ✨ |
+| `/api/calibration/tds` | POST | TDS-Sensor kalibrieren ✨ |
+| `/api/calibration/reset` | POST | Kalibrierung zurücksetzen ✨ |
 
 **Beispiel:**
 ```bash
