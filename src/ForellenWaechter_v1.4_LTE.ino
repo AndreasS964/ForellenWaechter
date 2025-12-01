@@ -1218,7 +1218,8 @@ void loop() {
 void initWebServer() {
   // Hauptseite
   server.on("/", HTTP_GET, handleRoot);
-  
+  server.on("/settings", HTTP_GET, handleSettings);
+
   // API Endpunkte
   server.on("/api/sensors", HTTP_GET, handleAPISensors);
   server.on("/api/status", HTTP_GET, handleAPIStatus);
@@ -1545,6 +1546,10 @@ void handleRoot() {
   server.send(200, "text/html", getHTML());
 }
 
+void handleSettings() {
+  server.send(200, "text/html", getSettingsHTML());
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════════
 // HTML DASHBOARD
 // ═══════════════════════════════════════════════════════════════════════════════════
@@ -1590,23 +1595,27 @@ String getHTML() {
     
     /* Header */
     header {
-      text-align: center;
+      display: flex;
+      align-items: center;
+      gap: 20px;
       padding: 30px 0;
       margin-bottom: 30px;
     }
-    
+
+    header > div:first-child { text-align: center; }
+    header > div:nth-child(2) { text-align: center; }
+
     .logo {
       font-size: 3.5em;
-      margin-bottom: 10px;
       animation: swim 3s ease-in-out infinite;
     }
-    
+
     @keyframes swim {
       0%, 100% { transform: translateX(0) rotate(0deg); }
       25% { transform: translateX(10px) rotate(5deg); }
       75% { transform: translateX(-10px) rotate(-5deg); }
     }
-    
+
     header h1 {
       font-size: 2em;
       font-weight: 300;
@@ -1616,12 +1625,26 @@ String getHTML() {
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
+      margin: 0;
     }
-    
+
     header .subtitle {
       color: rgba(255,255,255,0.6);
       font-size: 0.9em;
       margin-top: 5px;
+    }
+
+    .settings-btn {
+      font-size: 2em;
+      text-decoration: none;
+      opacity: 0.7;
+      transition: opacity 0.3s, transform 0.3s;
+      cursor: pointer;
+    }
+
+    .settings-btn:hover {
+      opacity: 1;
+      transform: rotate(45deg);
     }
     
     /* Status Bar */
@@ -1937,8 +1960,11 @@ String getHTML() {
   <div class="container">
     <header>
       <div class="logo">🐟</div>
-      <h1>ForellenWächter</h1>
-      <p class="subtitle">IoT Monitoring für Aquakultur</p>
+      <div style="flex: 1;">
+        <h1>ForellenWächter</h1>
+        <p class="subtitle">IoT Monitoring für Aquakultur</p>
+      </div>
+      <a href="/settings" class="settings-btn" title="Einstellungen">⚙️</a>
     </header>
     
     <div class="alarm-banner" id="alarmBanner">
@@ -2098,8 +2124,21 @@ String getHTML() {
           </button>
         </div>
       </div>
+
+      <div class="info-card">
+        <h3>🌤️ Wetter</h3>
+        <div id="weatherWidget">
+          <p style="color: rgba(255,255,255,0.6); font-size: 0.9em; margin-bottom: 10px;">
+            PLZ in <a href="/settings" style="color: #0ea5e9;">Einstellungen</a> konfigurieren
+          </p>
+          <button onclick="openWeather()" class="relay-btn" style="width: 100%;">
+            <span class="icon">📊</span>
+            <span class="name">24h Vorhersage</span>
+          </button>
+        </div>
+      </div>
     </div>
-    
+
     <footer>
       ForellenWächter v1.4 LTE Edition •
       <a href="/api/sensors">API</a> •
@@ -2353,7 +2392,13 @@ String getHTML() {
         console.error('Relay error:', e);
       }
     }
-    
+
+    // Wetter öffnen
+    function openWeather() {
+      const zip = localStorage.getItem('weatherZip') || '10115';
+      window.open(`https://wttr.in/${zip}?lang=de&format=v2`, '_blank');
+    }
+
     function setRange(chart, hours) {
       // Tab-Status aktualisieren
       event.target.parentNode.querySelectorAll('.chart-tab').forEach(t => t.classList.remove('active'));
@@ -2380,3 +2425,383 @@ String getHTML() {
 
 String getCSS() { return ""; }
 String getJS() { return ""; }
+
+// ═══════════════════════════════════════════════════════════════════════════════════
+// SETTINGS PAGE
+// ═══════════════════════════════════════════════════════════════════════════════════
+
+String getSettingsHTML() {
+  String html = R"rawliteral(
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Einstellungen - ForellenWächter</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%);
+      color: white;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+    .back-btn {
+      font-size: 1.5em;
+      text-decoration: none;
+      opacity: 0.8;
+      transition: opacity 0.3s;
+    }
+    .back-btn:hover { opacity: 1; }
+    h1 { font-size: 1.8em; font-weight: 300; }
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .tab {
+      padding: 12px 24px;
+      background: none;
+      border: none;
+      color: rgba(255,255,255,0.6);
+      cursor: pointer;
+      font-size: 1em;
+      border-bottom: 2px solid transparent;
+      transition: all 0.3s;
+    }
+    .tab.active {
+      color: #0ea5e9;
+      border-bottom-color: #0ea5e9;
+    }
+    .tab:hover { color: white; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .card {
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 15px;
+      padding: 25px;
+      margin-bottom: 20px;
+    }
+    .card h2 {
+      font-size: 1.2em;
+      margin-bottom: 20px;
+      font-weight: 400;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: rgba(255,255,255,0.8);
+      font-size: 0.9em;
+    }
+    input, select {
+      width: 100%;
+      padding: 12px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      color: white;
+      font-size: 1em;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #0ea5e9;
+    }
+    button {
+      padding: 12px 24px;
+      background: #0ea5e9;
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-size: 1em;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    button:hover {
+      background: #0284c7;
+      transform: translateY(-2px);
+    }
+    button.secondary {
+      background: rgba(255,255,255,0.1);
+    }
+    button.secondary:hover {
+      background: rgba(255,255,255,0.2);
+    }
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .info {
+      background: rgba(14,165,233,0.2);
+      border: 1px solid rgba(14,165,233,0.4);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 20px;
+      font-size: 0.9em;
+    }
+    .success {
+      background: rgba(16,185,129,0.2);
+      border-color: rgba(16,185,129,0.4);
+      padding: 12px;
+      border-radius: 8px;
+      margin-top: 15px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <a href="/" class="back-btn">←</a>
+      <h1>⚙️ Einstellungen</h1>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('calibration')">Kalibrierung</button>
+      <button class="tab" onclick="showTab('fish')">Fischarten</button>
+      <button class="tab" onclick="showTab('weather')">Wetter</button>
+    </div>
+
+    <!-- Kalibrierung Tab -->
+    <div id="calibration" class="tab-content active">
+      <div class="card">
+        <h2>🧪 pH Kalibrierung (2-Punkt)</h2>
+        <div class="info">
+          💡 Tauche den pH-Sensor in pH 4.0 und pH 7.0 Kalibrierlösungen für genaue Messwerte.
+        </div>
+        <div class="form-group">
+          <label>Punkt 1: pH 4.0</label>
+          <input type="number" id="ph4" step="0.01" placeholder="Rohwert bei pH 4.0">
+          <button onclick="calibratePH(4)" style="margin-top:10px">Punkt 1 speichern</button>
+        </div>
+        <div class="form-group">
+          <label>Punkt 2: pH 7.0</label>
+          <input type="number" id="ph7" step="0.01" placeholder="Rohwert bei pH 7.0">
+          <button onclick="calibratePH(7)" style="margin-top:10px">Punkt 2 speichern</button>
+        </div>
+        <button class="secondary" onclick="resetCalibration('ph')">Kalibrierung zurücksetzen</button>
+        <div id="phSuccess" class="success">✅ Kalibrierung gespeichert!</div>
+      </div>
+
+      <div class="card">
+        <h2>💧 TDS Kalibrierung (1-Punkt)</h2>
+        <div class="info">
+          💡 Verwende eine 1413 µS/cm (ca. 707 ppm) Kalibrierlösung.
+        </div>
+        <div class="form-group">
+          <label>Bekannter TDS-Wert (ppm)</label>
+          <input type="number" id="tdsKnown" value="707" step="1">
+        </div>
+        <div class="form-group">
+          <label>Gemessener Rohwert</label>
+          <input type="number" id="tdsRaw" step="0.1" placeholder="Aktueller Rohwert">
+        </div>
+        <button onclick="calibrateTDS()">TDS kalibrieren</button>
+        <div id="tdsSuccess" class="success">✅ Kalibrierung gespeichert!</div>
+      </div>
+    </div>
+
+    <!-- Fischarten Tab -->
+    <div id="fish" class="tab-content">
+      <div class="card">
+        <h2>🐟 Fischarten-Voreinstellungen</h2>
+        <div class="info">
+          💡 Wähle eine Fischart und die optimalen Grenzwerte werden automatisch gesetzt.
+        </div>
+        <div class="form-group">
+          <label>Fischart</label>
+          <select id="fishSpecies" onchange="loadFishPreset()">
+            <option value="custom">Benutzerdefiniert</option>
+            <option value="trout">Forelle (Salmo trutta)</option>
+            <option value="rainbow">Regenbogenforelle (Oncorhynchus mykiss)</option>
+            <option value="carp">Karpfen (Cyprinus carpio)</option>
+            <option value="tilapia">Tilapia</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Temperatur Min (°C)</label>
+          <input type="number" id="tempMin" step="0.1">
+        </div>
+        <div class="form-group">
+          <label>Temperatur Optimal (°C)</label>
+          <input type="number" id="tempOptimal" step="0.1">
+        </div>
+        <div class="form-group">
+          <label>Temperatur Max (°C)</label>
+          <input type="number" id="tempMax" step="0.1">
+        </div>
+        <div class="form-group">
+          <label>pH Min</label>
+          <input type="number" id="phMin" step="0.1">
+        </div>
+        <div class="form-group">
+          <label>pH Max</label>
+          <input type="number" id="phMax" step="0.1">
+        </div>
+        <button onclick="saveFishSettings()">Einstellungen speichern</button>
+        <div id="fishSuccess" class="success">✅ Einstellungen gespeichert!</div>
+      </div>
+    </div>
+
+    <!-- Wetter Tab -->
+    <div id="weather" class="tab-content">
+      <div class="card">
+        <h2>🌤️ Wetter-Vorhersage</h2>
+        <div class="info">
+          💡 Zeigt rudimentäre Wetterinfo für die nächsten 24h (experimentell).
+        </div>
+        <div class="form-group">
+          <label>Postleitzahl (DE)</label>
+          <input type="text" id="zipCode" placeholder="z.B. 10115" maxlength="5">
+        </div>
+        <button onclick="saveWeatherSettings()">Speichern</button>
+        <div id="weatherSuccess" class="success">✅ Gespeichert!</div>
+        <div id="weatherInfo" style="margin-top:20px; display:none;">
+          <h3>Aktuelles Wetter:</h3>
+          <p id="weatherData"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function showTab(tab) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById(tab).classList.add('active');
+    }
+
+    async function calibratePH(point) {
+      const value = document.getElementById('ph' + point).value;
+      try {
+        const res = await fetch('/api/calibration/ph', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ point, value: parseFloat(value) })
+        });
+        if (res.ok) {
+          document.getElementById('phSuccess').style.display = 'block';
+          setTimeout(() => document.getElementById('phSuccess').style.display = 'none', 3000);
+        }
+      } catch (e) {
+        alert('Fehler: ' + e);
+      }
+    }
+
+    async function calibrateTDS() {
+      const known = document.getElementById('tdsKnown').value;
+      const raw = document.getElementById('tdsRaw').value;
+      try {
+        const res = await fetch('/api/calibration/tds', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ known: parseFloat(known), raw: parseFloat(raw) })
+        });
+        if (res.ok) {
+          document.getElementById('tdsSuccess').style.display = 'block';
+          setTimeout(() => document.getElementById('tdsSuccess').style.display = 'none', 3000);
+        }
+      } catch (e) {
+        alert('Fehler: ' + e);
+      }
+    }
+
+    async function resetCalibration(sensor) {
+      if (confirm('Kalibrierung für ' + sensor.toUpperCase() + ' zurücksetzen?')) {
+        try {
+          await fetch('/api/calibration/reset?sensor=' + sensor, { method: 'POST' });
+          alert('Zurückgesetzt!');
+        } catch (e) {
+          alert('Fehler: ' + e);
+        }
+      }
+    }
+
+    function loadFishPreset() {
+      const species = document.getElementById('fishSpecies').value;
+      const presets = {
+        trout: { tempMin: 8, tempOptimal: 12, tempMax: 16, phMin: 6.5, phMax: 8.5 },
+        rainbow: { tempMin: 10, tempOptimal: 15, tempMax: 20, phMin: 6.5, phMax: 8.0 },
+        carp: { tempMin: 15, tempOptimal: 24, tempMax: 28, phMin: 6.5, phMax: 9.0 },
+        tilapia: { tempMin: 20, tempOptimal: 28, tempMax: 32, phMin: 6.5, phMax: 9.0 }
+      };
+
+      if (presets[species]) {
+        const p = presets[species];
+        document.getElementById('tempMin').value = p.tempMin;
+        document.getElementById('tempOptimal').value = p.tempOptimal;
+        document.getElementById('tempMax').value = p.tempMax;
+        document.getElementById('phMin').value = p.phMin;
+        document.getElementById('phMax').value = p.phMax;
+      }
+    }
+
+    async function saveFishSettings() {
+      const data = {
+        tempMin: parseFloat(document.getElementById('tempMin').value),
+        tempOptimal: parseFloat(document.getElementById('tempOptimal').value),
+        tempMax: parseFloat(document.getElementById('tempMax').value),
+        phMin: parseFloat(document.getElementById('phMin').value),
+        phMax: parseFloat(document.getElementById('phMax').value)
+      };
+
+      try {
+        const res = await fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        if (res.ok) {
+          document.getElementById('fishSuccess').style.display = 'block';
+          setTimeout(() => document.getElementById('fishSuccess').style.display = 'none', 3000);
+        }
+      } catch (e) {
+        alert('Fehler: ' + e);
+      }
+    }
+
+    async function saveWeatherSettings() {
+      const zip = document.getElementById('zipCode').value;
+      localStorage.setItem('weatherZip', zip);
+      document.getElementById('weatherSuccess').style.display = 'block';
+      setTimeout(() => document.getElementById('weatherSuccess').style.display = 'none', 3000);
+    }
+
+    // Lade aktuelle Einstellungen
+    async function loadSettings() {
+      try {
+        const res = await fetch('/api/settings');
+        const data = await res.json();
+        document.getElementById('tempMin').value = data.tempMin || 8;
+        document.getElementById('tempOptimal').value = data.tempOptimal || 12;
+        document.getElementById('tempMax').value = data.tempMax || 16;
+        document.getElementById('phMin').value = data.phMin || 6.5;
+        document.getElementById('phMax').value = data.phMax || 8.5;
+      } catch (e) {}
+
+      const zip = localStorage.getItem('weatherZip');
+      if (zip) document.getElementById('zipCode').value = zip;
+    }
+
+    loadSettings();
+  </script>
+</body>
+</html>
+)rawliteral";
+  return html;
+}
