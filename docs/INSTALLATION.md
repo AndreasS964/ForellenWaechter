@@ -114,7 +114,7 @@ PSRAM:           Disabled
 
 1. **Werkzeuge** → **Serieller Monitor** (115200 Baud)
 2. Messwerte sollten erscheinen
-3. Mit WiFi "ForellenWaechter" verbinden (PW: Lucas2024)
+3. Mit WiFi "ForellenWaechter" verbinden (PW: YourPassword123)
 4. Browser: `http://192.168.4.1`
 
 ---

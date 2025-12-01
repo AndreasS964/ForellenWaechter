@@ -98,7 +98,7 @@ Lösungen für häufige Probleme mit dem ForellenWächter System.
 **Lösungen:**
 
 1. **Passwort prüfen**
-   - Standard: `Lucas2024`
+   - Standard: `YourPassword123` (siehe Code)
    - Im Code änderbar
 
 2. **Gespeichertes Netzwerk löschen**

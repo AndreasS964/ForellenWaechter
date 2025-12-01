@@ -17,20 +17,20 @@ Vollständige Hardware-Anleitung für den ForellenWächter v1.3.
 
 ## Einkaufsliste
 
-### Hauptkomponenten (~100-150€)
+### Hauptkomponenten
 
-| Komponente | Menge | ca. Preis | Link-Typ |
-|------------|-------|-----------|----------|
-| ESP32 DevKit V1 | 1 | 8-12€ | Amazon/AliExpress |
-| DS18B20 wasserdicht (3m Kabel) | 2 | 5-8€/Stk | Amazon |
-| pH-Sensor Modul | 1 | 15-25€ | Amazon |
-| TDS-Sensor Modul | 1 | 8-12€ | Amazon |
-| Schwimmschalter | 1 | 5-10€ | Amazon |
-| 4-Kanal Relais Modul (5V) | 1 | 5-8€ | Amazon |
-| microSD-Karten Modul | 1 | 3-5€ | Amazon |
-| microSD Karte (8-32GB) | 1 | 5-10€ | Amazon |
-| Step-Down Converter (12V→5V) | 1 | 5-10€ | Amazon |
-| 12V Lithium Batterie (30Ah) | 1 | 40-80€ | Amazon |
+| Komponente | Menge | Bezugsquelle |
+|------------|-------|--------------|
+| ESP32 DevKit V1 | 1 | Amazon/AliExpress |
+| DS18B20 wasserdicht (3m Kabel) | 2 | Amazon |
+| pH-Sensor Modul | 1 | Amazon |
+| TDS-Sensor Modul | 1 | Amazon |
+| Schwimmschalter | 1 | Amazon |
+| 4-Kanal Relais Modul (5V) | 1 | Amazon |
+| microSD-Karten Modul | 1 | Amazon |
+| microSD Karte (8-32GB) | 1 | Amazon |
+| Step-Down Converter (12V→5V) | 1 | Amazon |
+| 12V Lithium Batterie (30Ah) | 1 | Amazon/Elektronikfachhandel |
 
 ### Kleinteile
 

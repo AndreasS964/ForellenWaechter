@@ -135,7 +135,7 @@ v1.3 (Deep Sleep): ~0.4mA → 8 MONATE auf 30Ah! 🎉
   - /api/settings
   - /api/relay
 
-- **Lucas Haug Branding**
+- **Professionelles Branding**
   - Blau/Grün Farbschema
   - Professionelles Design
 

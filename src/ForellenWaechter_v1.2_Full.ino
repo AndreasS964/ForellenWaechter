@@ -1,7 +1,7 @@
 /*
  * ═══════════════════════════════════════════════════════════════════════════
  * ForellenWächter v1.2 - Full Edition
- * Trout Guardian - IoT Monitoring System für Lucas Haug Forellenzucht
+ * Trout Guardian - IoT Monitoring System für Forellenzucht
  * ═══════════════════════════════════════════════════════════════════════════
  * 
  * Features:
@@ -24,7 +24,7 @@
  * - 4-Kanal Relais Modul
  * - SD-Karten Modul
  * 
- * Autor: Andreas
+ * Open Source Projekt
  * Lizenz: MIT
  * Repository: https://github.com/AndreasS964/ForellenWaechter
  * ═══════════════════════════════════════════════════════════════════════════
@@ -52,7 +52,7 @@
 
 // --- WiFi Einstellungen ---
 const char* AP_SSID = "ForellenWaechter";
-const char* AP_PASSWORD = "Lucas2024";
+const char* AP_PASSWORD = "YourPassword123";  // ÄNDERN!
 const char* STA_SSID = "";        // Leer = nur Access Point Mode
 const char* STA_PASSWORD = "";
 const char* MDNS_NAME = "forellenwaechter";
@@ -187,7 +187,7 @@ void printBanner() {
   Serial.println("\n\n");
   Serial.println("╔══════════════════════════════════════════╗");
   Serial.println("║   🐟 ForellenWächter v1.2 Full Edition   ║");
-  Serial.println("║   Lucas Haug Forellenzucht               ║");
+  Serial.println("║   IoT Monitoring für Aquakultur          ║");
   Serial.println("╚══════════════════════════════════════════╝\n");
   
   if (TEST_MODE) {
@@ -712,7 +712,7 @@ String getHTMLPage() {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ForellenWächter - Lucas Haug</title>
+  <title>ForellenWächter - Aquakultur Monitoring</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -827,7 +827,7 @@ String getHTMLPage() {
   <div class="container">
     <header>
       <h1>🐟 ForellenWächter</h1>
-      <p>Lucas Haug Forellenzucht - Live Monitoring</p>
+      <p>Aquakultur IoT Monitoring System</p>
     </header>
     
     <div class="status-bar">
