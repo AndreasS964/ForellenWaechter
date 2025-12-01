@@ -267,10 +267,12 @@ void setup() {
   }
 
   initWebServer();
-  syncTime();
-  
+
   // Erste Messung
   readAllSensors();
+
+  // NTP-Sync wird später in loop() durchgeführt (nicht in setup(), um Watchdog zu vermeiden)
+  lastNTPSync = millis() - NTP_SYNC_INTERVAL + 30000; // Erstes Sync nach 30 Sekunden
   
   Serial.println("\n✅ ForellenWächter v1.4 bereit!");
   Serial.println("══════════════════════════════════════════════\n");
@@ -286,7 +288,6 @@ void printBanner() {
   Serial.println("╔══════════════════════════════════════════════════════╗");
   Serial.println("║   🐟 ForellenWächter v1.4 - LTE Remote Edition       ║");
   Serial.println("║   IoT Monitoring System für Aquakultur              ║");
-  Serial.println("║   Powered by Wasserkraft 💧⚡                         ║");
   Serial.println("╚══════════════════════════════════════════════════════╝\n");
   
   if (TEST_MODE) Serial.println("⚠️  TEST MODE AKTIV");
@@ -1052,9 +1053,9 @@ void syncTime() {
   
   configTime(3600, 3600, "pool.ntp.org", "time.nist.gov");
   Serial.println("🕐 Zeitsynchronisation...");
-  
+
   struct tm timeinfo;
-  if (getLocalTime(&timeinfo, 10000)) {
+  if (getLocalTime(&timeinfo, 2000)) {  // Timeout reduziert: 2s statt 10s
     Serial.printf("✅ Zeit: %02d:%02d:%02d %02d.%02d.%04d\n",
       timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec,
       timeinfo.tm_mday, timeinfo.tm_mon + 1, timeinfo.tm_year + 1900);
@@ -2080,9 +2081,9 @@ String getHTML() {
     </div>
     
     <footer>
-      ForellenWächter v1.4 LTE Edition • 
-      <a href="/api/sensors">API</a> • 
-      © 2024 • Made with ❤️ für die Forellen
+      ForellenWächter v1.4 LTE Edition •
+      <a href="/api/sensors">API</a> •
+      © 2024 Andreas
     </footer>
   </div>
   
