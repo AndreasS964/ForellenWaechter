@@ -109,19 +109,19 @@ struct TroutParameters {
 // Analog Sensoren
 #define PH_PIN 34
 #define TDS_PIN 35
-#define DO_PIN 32                    // Dissolved Oxygen (optional)
+#define DO_PIN 36                    // Dissolved Oxygen (geändert von 32, da 32 = Relay 1)
 
 // Digital I/O
-#define WATER_LEVEL_PIN 33
-#define STATUS_LED 2
+#define WATER_LEVEL_PIN 39           // Float Switch
+#define STATUS_LED 23                // GPIO23 - Status LED
 #define ALARM_LED 13                 // Externe Alarm-LED (rot)
 #define BUZZER_PIN 15
 
-// Relais (Active LOW)
-#define RELAY_AERATION 26
-#define RELAY_ALARM 27
-#define RELAY_SPARE1 14
-#define RELAY_SPARE2 12
+// Relais (Active LOW) - Korrigiert nach User-Angabe
+#define RELAY_1 32                   // GPIO32 - Alarm
+#define RELAY_2 33                   // GPIO33 - Reserve 1
+#define RELAY_3 25                   // GPIO25 - Reserve 2
+#define RELAY_4 26                   // GPIO26 - Belüftung
 
 // SD-Karte
 #define SD_CS 5
@@ -237,6 +237,10 @@ unsigned long lastHistoryUpdate = 0;
 unsigned long lastNTPSync = 0;
 unsigned long startTime = 0;
 
+// Relay Modi: 0=Auto, 1=An, 2=Aus
+uint8_t relayModes[4] = {2, 2, 2, 0};  // 1-3: Aus, 4: Auto (Belüftung)
+bool relayStates[4] = {false, false, false, false};
+
 // ═══════════════════════════════════════════════════════════════════════════════════
 // SETUP
 // ═══════════════════════════════════════════════════════════════════════════════════
@@ -324,15 +328,15 @@ void initPins() {
   pinMode(WATER_LEVEL_PIN, INPUT_PULLUP);
   
   // Relais (alle AUS = HIGH bei Active LOW)
-  pinMode(RELAY_AERATION, OUTPUT);
-  pinMode(RELAY_ALARM, OUTPUT);
-  pinMode(RELAY_SPARE1, OUTPUT);
-  pinMode(RELAY_SPARE2, OUTPUT);
-  
-  digitalWrite(RELAY_AERATION, HIGH);
-  digitalWrite(RELAY_ALARM, HIGH);
-  digitalWrite(RELAY_SPARE1, HIGH);
-  digitalWrite(RELAY_SPARE2, HIGH);
+  pinMode(RELAY_1, OUTPUT);
+  pinMode(RELAY_2, OUTPUT);
+  pinMode(RELAY_3, OUTPUT);
+  pinMode(RELAY_4, OUTPUT);
+
+  digitalWrite(RELAY_1, HIGH);
+  digitalWrite(RELAY_2, HIGH);
+  digitalWrite(RELAY_3, HIGH);
+  digitalWrite(RELAY_4, HIGH);
   
   // Startup-Sequenz
   for (int i = 0; i < 3; i++) {
@@ -956,22 +960,49 @@ void checkAlarms() {
 
 void controlAeration() {
   bool shouldActivate = false;
-  
+
   // Automatische Belüftung bei:
   if (sensors.waterTemp > troutParams.tempMax) {
     shouldActivate = true;
   }
-  
+
   if (ENABLE_DO_SENSOR && sensors.dissolvedOxygen < troutParams.doOptimal) {
     shouldActivate = true;
   }
-  
+
   if (sensors.ph < troutParams.phMin || sensors.ph > troutParams.phMax) {
     shouldActivate = true;
   }
-  
+
   sensors.aerationActive = shouldActivate;
-  digitalWrite(RELAY_AERATION, shouldActivate ? LOW : HIGH);
+  // Belüftungs-Relay wird in updateRelays() gesetzt
+}
+
+void updateRelays() {
+  // Für jedes Relay: Modus prüfen und entsprechend setzen
+  int pins[4] = {RELAY_1, RELAY_2, RELAY_3, RELAY_4};
+
+  for (int i = 0; i < 4; i++) {
+    bool targetState = false;
+
+    switch (relayModes[i]) {
+      case 0:  // Auto
+        if (i == 3) {  // Relay 4 = Belüftung Auto
+          targetState = sensors.aerationActive;
+        }
+        // Andere Relays: Auto = Aus (keine Auto-Logik)
+        break;
+      case 1:  // An
+        targetState = true;
+        break;
+      case 2:  // Aus
+        targetState = false;
+        break;
+    }
+
+    relayStates[i] = targetState;
+    digitalWrite(pins[i], targetState ? LOW : HIGH);  // Active LOW
+  }
 }
 
 void soundAlarm() {
@@ -1144,6 +1175,7 @@ void loop() {
     readAllSensors();
     checkAlarms();
     controlAeration();
+    updateRelays();  // Relays basierend auf Modi aktualisieren
     lastSensorRead = now;
     esp_task_wdt_reset();
   }
@@ -1218,7 +1250,8 @@ void loop() {
 void initWebServer() {
   // Hauptseite
   server.on("/", HTTP_GET, handleRoot);
-  
+  server.on("/settings", HTTP_GET, handleSettings);
+
   // API Endpunkte
   server.on("/api/sensors", HTTP_GET, handleAPISensors);
   server.on("/api/status", HTTP_GET, handleAPIStatus);
@@ -1374,29 +1407,26 @@ void handleAPISettingsPost() {
 }
 
 void handleAPIRelay() {
-  if (!server.hasArg("relay") || !server.hasArg("state")) {
-    server.send(400, "application/json", "{\"error\":\"Missing parameters\"}");
+  if (!server.hasArg("relay")) {
+    server.send(400, "application/json", "{\"error\":\"Missing relay parameter\"}");
     return;
   }
-  
+
   int relay = server.arg("relay").toInt();
-  bool state = server.arg("state") == "1";
-  
-  int pin = -1;
-  switch (relay) {
-    case 1: pin = RELAY_AERATION; break;
-    case 2: pin = RELAY_ALARM; break;
-    case 3: pin = RELAY_SPARE1; break;
-    case 4: pin = RELAY_SPARE2; break;
-  }
-  
-  if (pin < 0) {
-    server.send(400, "application/json", "{\"error\":\"Invalid relay\"}");
+  if (relay < 1 || relay > 4) {
+    server.send(400, "application/json", "{\"error\":\"Invalid relay number\"}");
     return;
   }
-  
-  digitalWrite(pin, state ? LOW : HIGH);
-  server.send(200, "application/json", "{\"success\":true}");
+
+  // Toggle-Modus: Auto → An → Aus → Auto
+  relayModes[relay - 1]++;
+  if (relayModes[relay - 1] > 2) relayModes[relay - 1] = 0;
+
+  // Sofort anwenden
+  updateRelays();
+
+  String response = "{\"relay\":" + String(relay) + ",\"mode\":" + String(relayModes[relay - 1]) + "}";
+  server.send(200, "application/json", response);
 }
 
 void handleAPITestEmail() {
@@ -1545,6 +1575,10 @@ void handleRoot() {
   server.send(200, "text/html", getHTML());
 }
 
+void handleSettings() {
+  server.send(200, "text/html", getSettingsHTML());
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════════
 // HTML DASHBOARD
 // ═══════════════════════════════════════════════════════════════════════════════════
@@ -1590,23 +1624,27 @@ String getHTML() {
     
     /* Header */
     header {
-      text-align: center;
+      display: flex;
+      align-items: center;
+      gap: 20px;
       padding: 30px 0;
       margin-bottom: 30px;
     }
-    
+
+    header > div:first-child { text-align: center; }
+    header > div:nth-child(2) { text-align: center; }
+
     .logo {
       font-size: 3.5em;
-      margin-bottom: 10px;
       animation: swim 3s ease-in-out infinite;
     }
-    
+
     @keyframes swim {
       0%, 100% { transform: translateX(0) rotate(0deg); }
       25% { transform: translateX(10px) rotate(5deg); }
       75% { transform: translateX(-10px) rotate(-5deg); }
     }
-    
+
     header h1 {
       font-size: 2em;
       font-weight: 300;
@@ -1616,12 +1654,26 @@ String getHTML() {
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
+      margin: 0;
     }
-    
+
     header .subtitle {
       color: rgba(255,255,255,0.6);
       font-size: 0.9em;
       margin-top: 5px;
+    }
+
+    .settings-btn {
+      font-size: 2em;
+      text-decoration: none;
+      opacity: 0.7;
+      transition: opacity 0.3s, transform 0.3s;
+      cursor: pointer;
+    }
+
+    .settings-btn:hover {
+      opacity: 1;
+      transform: rotate(45deg);
     }
     
     /* Status Bar */
@@ -1860,9 +1912,25 @@ String getHTML() {
     
     .relay-btn:hover { background: rgba(255,255,255,0.2); }
     .relay-btn.active { background: var(--secondary); border-color: var(--secondary); }
-    
+
     .relay-btn .icon { font-size: 1.5em; }
-    .relay-btn .name { font-size: 0.8em; }
+    .relay-btn .name { font-size: 0.8em; font-weight: 500; }
+    .relay-btn .mode-label {
+      font-size: 0.7em;
+      margin-top: 5px;
+      padding: 3px 8px;
+      border-radius: 10px;
+      font-weight: 500;
+    }
+
+    .relay-btn.mode-auto { background: rgba(14,165,233,0.3); border-color: rgba(14,165,233,0.5); }
+    .relay-btn.mode-auto .mode-label { background: rgba(14,165,233,0.5); color: white; }
+
+    .relay-btn.mode-on { background: rgba(16,185,129,0.3); border-color: rgba(16,185,129,0.5); }
+    .relay-btn.mode-on .mode-label { background: rgba(16,185,129,0.5); color: white; }
+
+    .relay-btn.mode-off { opacity: 0.5; }
+    .relay-btn.mode-off .mode-label { background: rgba(255,255,255,0.2); color: rgba(255,255,255,0.7); }
     
     /* Alarm Banner */
     .alarm-banner {
@@ -1930,8 +1998,11 @@ String getHTML() {
   <div class="container">
     <header>
       <div class="logo">🐟</div>
-      <h1>ForellenWächter</h1>
-      <p class="subtitle">IoT Monitoring für Aquakultur • Powered by Wasserkraft ⚡</p>
+      <div style="flex: 1;">
+        <h1>ForellenWächter</h1>
+        <p class="subtitle">IoT Monitoring für Aquakultur</p>
+      </div>
+      <a href="/settings" class="settings-btn" title="Einstellungen">⚙️</a>
     </header>
     
     <div class="alarm-banner" id="alarmBanner">
@@ -2054,7 +2125,7 @@ String getHTML() {
         <h3>⚙️ System</h3>
         <div class="info-row">
           <span class="info-label">Firmware</span>
-          <span class="info-value" id="firmware">v1.4.0</span>
+          <span class="info-value" id="firmware">v1.5.0</span>
         </div>
         <div class="info-row">
           <span class="info-label">Free Heap</span>
@@ -2073,36 +2144,53 @@ String getHTML() {
       <div class="info-card">
         <h3>🎛️ Steuerung</h3>
         <div class="controls-grid">
-          <button class="relay-btn" id="relay1" onclick="toggleRelay(1)">
-            <span class="icon">💨</span>
-            <span class="name">Belüftung</span>
-          </button>
-          <button class="relay-btn" id="relay2" onclick="toggleRelay(2)">
+          <button class="relay-btn mode-off" id="relay1" onclick="toggleRelay(1)">
             <span class="icon">🔔</span>
             <span class="name">Alarm</span>
+            <span class="mode-label">Aus</span>
           </button>
-          <button class="relay-btn" id="relay3" onclick="toggleRelay(3)">
+          <button class="relay-btn mode-off" id="relay2" onclick="toggleRelay(2)">
             <span class="icon">⚡</span>
             <span class="name">Reserve 1</span>
+            <span class="mode-label">Aus</span>
           </button>
-          <button class="relay-btn" id="relay4" onclick="toggleRelay(4)">
+          <button class="relay-btn mode-off" id="relay3" onclick="toggleRelay(3)">
             <span class="icon">⚡</span>
             <span class="name">Reserve 2</span>
+            <span class="mode-label">Aus</span>
+          </button>
+          <button class="relay-btn mode-auto" id="relay4" onclick="toggleRelay(4)">
+            <span class="icon">💨</span>
+            <span class="name">Belüftung</span>
+            <span class="mode-label">Auto</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="info-card">
+        <h3>🌤️ Wetter</h3>
+        <div id="weatherWidget">
+          <p style="color: rgba(255,255,255,0.6); font-size: 0.9em; margin-bottom: 10px;">
+            PLZ in <a href="/settings" style="color: #0ea5e9;">Einstellungen</a> konfigurieren
+          </p>
+          <button onclick="openWeather()" class="relay-btn" style="width: 100%;">
+            <span class="icon">📊</span>
+            <span class="name">24h Vorhersage</span>
           </button>
         </div>
       </div>
     </div>
-    
+
     <footer>
-      ForellenWächter v1.4 LTE Edition •
+      ForellenWächter v1.5 LTE Edition •
       <a href="/api/sensors">API</a> •
-      © 2024 Andreas
+      © 2024 Andreas Sika
     </footer>
   </div>
   
   <script>
     let tempChart, qualityChart;
-    let relayStates = [false, false, false, false];
+    let relayModes = [2, 2, 2, 0];  // 0=Auto, 1=An, 2=Aus
     
     // Charts initialisieren
     function initCharts() {
@@ -2170,14 +2258,22 @@ String getHTML() {
             yAxisID: 'y1',
             tension: 0.4,
             borderWidth: 2
+          }, {
+            label: 'TDS ppm',
+            data: [],
+            borderColor: '#f59e0b',
+            yAxisID: 'y2',
+            tension: 0.4,
+            borderWidth: 2
           }]
         },
         options: {
           ...defaultOptions,
           scales: {
             ...defaultOptions.scales,
-            y: { ...defaultOptions.scales.y, position: 'left', min: 5, max: 10 },
-            y1: { ...defaultOptions.scales.y, position: 'right', min: 0, max: 15 }
+            y: { ...defaultOptions.scales.y, position: 'left', min: 5, max: 10, title: { display: true, text: 'pH', color: 'rgba(255,255,255,0.6)' } },
+            y1: { ...defaultOptions.scales.y, position: 'right', min: 0, max: 15, grid: { display: false }, title: { display: true, text: 'O₂ (mg/L)', color: 'rgba(255,255,255,0.6)' } },
+            y2: { ...defaultOptions.scales.y, position: 'right', min: 0, max: 500, grid: { display: false }, title: { display: true, text: 'TDS (ppm)', color: 'rgba(255,255,255,0.6)' } }
           }
         }
       });
@@ -2302,6 +2398,7 @@ String getHTML() {
       qualityChart.data.labels = labels;
       qualityChart.data.datasets[0].data = data.ph;
       qualityChart.data.datasets[1].data = data.do || [];
+      qualityChart.data.datasets[2].data = data.tds || [];
       qualityChart.update('none');
     }
     
@@ -2315,24 +2412,49 @@ String getHTML() {
       return `${m}m`;
     }
     
-    // Relais steuern
+    // Relais steuern - Toggle durch Modi: Auto → An → Aus → Auto
     async function toggleRelay(num) {
-      const newState = !relayStates[num - 1];
-      
       try {
-        const res = await fetch(`/api/relay?relay=${num}&state=${newState ? 1 : 0}`, {
+        const res = await fetch(`/api/relay?relay=${num}`, {
           method: 'POST'
         });
-        
+
         if (res.ok) {
-          relayStates[num - 1] = newState;
-          document.getElementById(`relay${num}`).classList.toggle('active', newState);
+          const data = await res.json();
+          relayModes[num - 1] = data.mode;
+          updateRelayButton(num, data.mode);
         }
       } catch (e) {
         console.error('Relay error:', e);
       }
     }
-    
+
+    function updateRelayButton(num, mode) {
+      const btn = document.getElementById(`relay${num}`);
+      const label = btn.querySelector('.mode-label');
+
+      // Alle mode-* Klassen entfernen
+      btn.classList.remove('mode-auto', 'mode-on', 'mode-off');
+
+      // Neue Klasse und Text setzen
+      if (mode === 0) {
+        btn.classList.add('mode-auto');
+        label.textContent = 'Auto';
+      } else if (mode === 1) {
+        btn.classList.add('mode-on');
+        label.textContent = 'An';
+      } else {
+        btn.classList.add('mode-off');
+        label.textContent = 'Aus';
+      }
+    }
+
+    // Wetter öffnen
+    function openWeather() {
+      const zip = localStorage.getItem('weatherZip') || '10115';
+      window.open(`https://wttr.in/${zip}?lang=de&format=v2`, '_blank');
+    }
+
     function setRange(chart, hours) {
       // Tab-Status aktualisieren
       event.target.parentNode.querySelectorAll('.chart-tab').forEach(t => t.classList.remove('active'));
@@ -2359,3 +2481,383 @@ String getHTML() {
 
 String getCSS() { return ""; }
 String getJS() { return ""; }
+
+// ═══════════════════════════════════════════════════════════════════════════════════
+// SETTINGS PAGE
+// ═══════════════════════════════════════════════════════════════════════════════════
+
+String getSettingsHTML() {
+  String html = R"rawliteral(
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Einstellungen - ForellenWächter</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%);
+      color: white;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+    .back-btn {
+      font-size: 1.5em;
+      text-decoration: none;
+      opacity: 0.8;
+      transition: opacity 0.3s;
+    }
+    .back-btn:hover { opacity: 1; }
+    h1 { font-size: 1.8em; font-weight: 300; }
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .tab {
+      padding: 12px 24px;
+      background: none;
+      border: none;
+      color: rgba(255,255,255,0.6);
+      cursor: pointer;
+      font-size: 1em;
+      border-bottom: 2px solid transparent;
+      transition: all 0.3s;
+    }
+    .tab.active {
+      color: #0ea5e9;
+      border-bottom-color: #0ea5e9;
+    }
+    .tab:hover { color: white; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .card {
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 15px;
+      padding: 25px;
+      margin-bottom: 20px;
+    }
+    .card h2 {
+      font-size: 1.2em;
+      margin-bottom: 20px;
+      font-weight: 400;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: rgba(255,255,255,0.8);
+      font-size: 0.9em;
+    }
+    input, select {
+      width: 100%;
+      padding: 12px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      color: white;
+      font-size: 1em;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #0ea5e9;
+    }
+    button {
+      padding: 12px 24px;
+      background: #0ea5e9;
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-size: 1em;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    button:hover {
+      background: #0284c7;
+      transform: translateY(-2px);
+    }
+    button.secondary {
+      background: rgba(255,255,255,0.1);
+    }
+    button.secondary:hover {
+      background: rgba(255,255,255,0.2);
+    }
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .info {
+      background: rgba(14,165,233,0.2);
+      border: 1px solid rgba(14,165,233,0.4);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 20px;
+      font-size: 0.9em;
+    }
+    .success {
+      background: rgba(16,185,129,0.2);
+      border-color: rgba(16,185,129,0.4);
+      padding: 12px;
+      border-radius: 8px;
+      margin-top: 15px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <a href="/" class="back-btn">←</a>
+      <h1>⚙️ Einstellungen</h1>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('calibration')">Kalibrierung</button>
+      <button class="tab" onclick="showTab('fish')">Fischarten</button>
+      <button class="tab" onclick="showTab('weather')">Wetter</button>
+    </div>
+
+    <!-- Kalibrierung Tab -->
+    <div id="calibration" class="tab-content active">
+      <div class="card">
+        <h2>🧪 pH Kalibrierung (2-Punkt)</h2>
+        <div class="info">
+          💡 Tauche den pH-Sensor in pH 4.0 und pH 7.0 Kalibrierlösungen für genaue Messwerte.
+        </div>
+        <div class="form-group">
+          <label>Punkt 1: pH 4.0</label>
+          <input type="number" id="ph4" step="0.01" placeholder="Rohwert bei pH 4.0">
+          <button onclick="calibratePH(4)" style="margin-top:10px">Punkt 1 speichern</button>
+        </div>
+        <div class="form-group">
+          <label>Punkt 2: pH 7.0</label>
+          <input type="number" id="ph7" step="0.01" placeholder="Rohwert bei pH 7.0">
+          <button onclick="calibratePH(7)" style="margin-top:10px">Punkt 2 speichern</button>
+        </div>
+        <button class="secondary" onclick="resetCalibration('ph')">Kalibrierung zurücksetzen</button>
+        <div id="phSuccess" class="success">✅ Kalibrierung gespeichert!</div>
+      </div>
+
+      <div class="card">
+        <h2>💧 TDS Kalibrierung (1-Punkt)</h2>
+        <div class="info">
+          💡 Verwende eine 1413 µS/cm (ca. 707 ppm) Kalibrierlösung.
+        </div>
+        <div class="form-group">
+          <label>Bekannter TDS-Wert (ppm)</label>
+          <input type="number" id="tdsKnown" value="707" step="1">
+        </div>
+        <div class="form-group">
+          <label>Gemessener Rohwert</label>
+          <input type="number" id="tdsRaw" step="0.1" placeholder="Aktueller Rohwert">
+        </div>
+        <button onclick="calibrateTDS()">TDS kalibrieren</button>
+        <div id="tdsSuccess" class="success">✅ Kalibrierung gespeichert!</div>
+      </div>
+    </div>
+
+    <!-- Fischarten Tab -->
+    <div id="fish" class="tab-content">
+      <div class="card">
+        <h2>🐟 Fischarten-Voreinstellungen</h2>
+        <div class="info">
+          💡 Wähle eine Fischart und die optimalen Grenzwerte werden automatisch gesetzt.
+        </div>
+        <div class="form-group">
+          <label>Fischart</label>
+          <select id="fishSpecies" onchange="loadFishPreset()">
+            <option value="custom">Benutzerdefiniert</option>
+            <option value="trout">Forelle (Salmo trutta)</option>
+            <option value="rainbow">Regenbogenforelle (Oncorhynchus mykiss)</option>
+            <option value="carp">Karpfen (Cyprinus carpio)</option>
+            <option value="tilapia">Tilapia</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Temperatur Min (°C)</label>
+          <input type="number" id="tempMin" step="0.1">
+        </div>
+        <div class="form-group">
+          <label>Temperatur Optimal (°C)</label>
+          <input type="number" id="tempOptimal" step="0.1">
+        </div>
+        <div class="form-group">
+          <label>Temperatur Max (°C)</label>
+          <input type="number" id="tempMax" step="0.1">
+        </div>
+        <div class="form-group">
+          <label>pH Min</label>
+          <input type="number" id="phMin" step="0.1">
+        </div>
+        <div class="form-group">
+          <label>pH Max</label>
+          <input type="number" id="phMax" step="0.1">
+        </div>
+        <button onclick="saveFishSettings()">Einstellungen speichern</button>
+        <div id="fishSuccess" class="success">✅ Einstellungen gespeichert!</div>
+      </div>
+    </div>
+
+    <!-- Wetter Tab -->
+    <div id="weather" class="tab-content">
+      <div class="card">
+        <h2>🌤️ Wetter-Vorhersage</h2>
+        <div class="info">
+          💡 Zeigt rudimentäre Wetterinfo für die nächsten 24h (experimentell).
+        </div>
+        <div class="form-group">
+          <label>Postleitzahl (DE)</label>
+          <input type="text" id="zipCode" placeholder="z.B. 10115" maxlength="5">
+        </div>
+        <button onclick="saveWeatherSettings()">Speichern</button>
+        <div id="weatherSuccess" class="success">✅ Gespeichert!</div>
+        <div id="weatherInfo" style="margin-top:20px; display:none;">
+          <h3>Aktuelles Wetter:</h3>
+          <p id="weatherData"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function showTab(tab) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById(tab).classList.add('active');
+    }
+
+    async function calibratePH(point) {
+      const value = document.getElementById('ph' + point).value;
+      try {
+        const res = await fetch('/api/calibration/ph', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ point, value: parseFloat(value) })
+        });
+        if (res.ok) {
+          document.getElementById('phSuccess').style.display = 'block';
+          setTimeout(() => document.getElementById('phSuccess').style.display = 'none', 3000);
+        }
+      } catch (e) {
+        alert('Fehler: ' + e);
+      }
+    }
+
+    async function calibrateTDS() {
+      const known = document.getElementById('tdsKnown').value;
+      const raw = document.getElementById('tdsRaw').value;
+      try {
+        const res = await fetch('/api/calibration/tds', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ known: parseFloat(known), raw: parseFloat(raw) })
+        });
+        if (res.ok) {
+          document.getElementById('tdsSuccess').style.display = 'block';
+          setTimeout(() => document.getElementById('tdsSuccess').style.display = 'none', 3000);
+        }
+      } catch (e) {
+        alert('Fehler: ' + e);
+      }
+    }
+
+    async function resetCalibration(sensor) {
+      if (confirm('Kalibrierung für ' + sensor.toUpperCase() + ' zurücksetzen?')) {
+        try {
+          await fetch('/api/calibration/reset?sensor=' + sensor, { method: 'POST' });
+          alert('Zurückgesetzt!');
+        } catch (e) {
+          alert('Fehler: ' + e);
+        }
+      }
+    }
+
+    function loadFishPreset() {
+      const species = document.getElementById('fishSpecies').value;
+      const presets = {
+        trout: { tempMin: 8, tempOptimal: 12, tempMax: 16, phMin: 6.5, phMax: 8.5 },
+        rainbow: { tempMin: 10, tempOptimal: 15, tempMax: 20, phMin: 6.5, phMax: 8.0 },
+        carp: { tempMin: 15, tempOptimal: 24, tempMax: 28, phMin: 6.5, phMax: 9.0 },
+        tilapia: { tempMin: 20, tempOptimal: 28, tempMax: 32, phMin: 6.5, phMax: 9.0 }
+      };
+
+      if (presets[species]) {
+        const p = presets[species];
+        document.getElementById('tempMin').value = p.tempMin;
+        document.getElementById('tempOptimal').value = p.tempOptimal;
+        document.getElementById('tempMax').value = p.tempMax;
+        document.getElementById('phMin').value = p.phMin;
+        document.getElementById('phMax').value = p.phMax;
+      }
+    }
+
+    async function saveFishSettings() {
+      const data = {
+        tempMin: parseFloat(document.getElementById('tempMin').value),
+        tempOptimal: parseFloat(document.getElementById('tempOptimal').value),
+        tempMax: parseFloat(document.getElementById('tempMax').value),
+        phMin: parseFloat(document.getElementById('phMin').value),
+        phMax: parseFloat(document.getElementById('phMax').value)
+      };
+
+      try {
+        const res = await fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        if (res.ok) {
+          document.getElementById('fishSuccess').style.display = 'block';
+          setTimeout(() => document.getElementById('fishSuccess').style.display = 'none', 3000);
+        }
+      } catch (e) {
+        alert('Fehler: ' + e);
+      }
+    }
+
+    async function saveWeatherSettings() {
+      const zip = document.getElementById('zipCode').value;
+      localStorage.setItem('weatherZip', zip);
+      document.getElementById('weatherSuccess').style.display = 'block';
+      setTimeout(() => document.getElementById('weatherSuccess').style.display = 'none', 3000);
+    }
+
+    // Lade aktuelle Einstellungen
+    async function loadSettings() {
+      try {
+        const res = await fetch('/api/settings');
+        const data = await res.json();
+        document.getElementById('tempMin').value = data.tempMin || 8;
+        document.getElementById('tempOptimal').value = data.tempOptimal || 12;
+        document.getElementById('tempMax').value = data.tempMax || 16;
+        document.getElementById('phMin').value = data.phMin || 6.5;
+        document.getElementById('phMax').value = data.phMax || 8.5;
+      } catch (e) {}
+
+      const zip = localStorage.getItem('weatherZip');
+      if (zip) document.getElementById('zipCode').value = zip;
+    }
+
+    loadSettings();
+  </script>
+</body>
+</html>
+)rawliteral";
+  return html;
+}
