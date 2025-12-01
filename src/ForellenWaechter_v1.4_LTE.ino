@@ -249,31 +249,39 @@ void setup() {
   startTime = millis();
 
   initWatchdog();
+  esp_task_wdt_reset();  // Watchdog zurücksetzen nach Init
+
   initPins();
   initEEPROM();
   loadCalibration();
   initSensors();
   initSDCard();
-  
+  esp_task_wdt_reset();  // Watchdog zurücksetzen nach Sensor-Init
+
   if (ENABLE_WIFI) {
     initWiFi();
+    esp_task_wdt_reset();  // Watchdog zurücksetzen nach WiFi-Init
     if (ENABLE_OTA) {
       initOTA();
+      esp_task_wdt_reset();  // Watchdog zurücksetzen nach OTA-Init
     }
   }
 
   if (ENABLE_LTE) {
     initLTE();
+    esp_task_wdt_reset();  // Watchdog zurücksetzen nach LTE-Init
   }
 
   initWebServer();
+  esp_task_wdt_reset();  // Watchdog zurücksetzen nach WebServer-Init
 
   // Erste Messung
   readAllSensors();
+  esp_task_wdt_reset();  // Watchdog zurücksetzen nach Sensor-Read
 
   // NTP-Sync wird später in loop() durchgeführt (nicht in setup(), um Watchdog zu vermeiden)
   lastNTPSync = millis() - NTP_SYNC_INTERVAL + 30000; // Erstes Sync nach 30 Sekunden
-  
+
   Serial.println("\n✅ ForellenWächter v1.4 bereit!");
   Serial.println("══════════════════════════════════════════════\n");
   
