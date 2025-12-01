@@ -2,7 +2,7 @@
 
 **ESP32-basiertes IoT-Monitoring-System für Forellenzucht**
 
-![Version](https://img.shields.io/badge/Version-1.4-blue)
+![Version](https://img.shields.io/badge/Version-1.5-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Platform](https://img.shields.io/badge/Platform-ESP32-red)
 ![LTE](https://img.shields.io/badge/LTE-Remote-orange)
@@ -17,23 +17,26 @@ ForellenWächter ist ein umfassendes Monitoring-System für Forellenaufzuchtanla
 **Anwendung:** Forellenzucht-Monitoring
 **Stromversorgung:** Flexibel (Netz/Batterie/Wasserkraft) ⚡💧
 
-### ✨ Features v1.4.1
+### ✨ Features v1.5
 
 | Feature | Beschreibung |
 |---------|--------------|
 | 📡 **LTE/4G Remote** | Zugriff von überall über Mobilfunk |
 | 📧 **E-Mail Alarme** | Sofortige Benachrichtigung bei Problemen |
 | 🌡️ **Dual Temperatur** | Wasser- und Lufttemperatur (DS18B20) |
-| 🧪 **Wasserqualität** | pH-Wert und TDS Monitoring |
+| 🧪 **Wasserqualität** | pH, TDS & DO Monitoring mit TDS in Charts |
 | 🫧 **Sauerstoff** | Dissolved Oxygen Sensor (optional) |
 | 🌊 **Wasserlevel** | Float Switch mit Alarm |
 | 📊 **Live Dashboard** | Modernes Glassmorphism-Design |
-| 📈 **Charts** | 24h/7d Verlaufsdiagramme |
+| 📈 **Charts** | 24h/7d Verlaufsdiagramme (Temp, pH, O₂, TDS) |
 | 💾 **SD-Logging** | CSV-Export für Langzeitanalyse |
-| 💨 **Auto-Belüftung** | Aktiviert bei kritischen Werten |
+| 🎛️ **3-Modi Relays** | Auto/An/Aus für alle 4 Relais ✨ NEU |
 | 🔄 **REST API** | Für externe Integrationen |
-| 🎯 **Kalibrierung** | 2-Punkt pH & TDS Kalibrierung ✨ NEU |
-| 🔄 **OTA Updates** | Drahtlose Firmware-Updates ✨ NEU |
+| ⚙️ **Settings-Seite** | Kalibrierung, Fischarten, Wetter ✨ NEU |
+| 🐟 **Fischarten-Presets** | Forelle, Karpfen, Tilapia, Custom ✨ NEU |
+| 🌤️ **Wetter-Widget** | 24h Vorhersage nach PLZ ✨ NEU |
+| 🎯 **Kalibrierung** | 2-Punkt pH & TDS Kalibrierung |
+| 🔄 **OTA Updates** | Drahtlose Firmware-Updates |
 
 ---
 
@@ -41,7 +44,8 @@ ForellenWächter ist ein umfassendes Monitoring-System für Forellenaufzuchtanla
 
 | Version | Anwendung | Features |
 |---------|-----------|----------|
-| **v1.4 LTE** | Netzbetrieb + Remote | LTE, E-Mail, DO-Sensor, neues Dashboard |
+| **v1.5 LTE** | Netzbetrieb + Remote | Settings-Seite, Fischarten-Presets, 3-Modi Relays, Wetter |
+| **v1.4 LTE** | Netzbetrieb + Remote | LTE, E-Mail, DO-Sensor, OTA, Kalibrierung |
 | **v1.2 Full** | Netzbetrieb | Web-Dashboard, Charts, WebSocket |
 | **v1.3 Deep Sleep** | Batteriebetrieb | 8 Monate auf 30Ah |
 
@@ -52,7 +56,7 @@ ForellenWächter ist ein umfassendes Monitoring-System für Forellenaufzuchtanla
 │                                                             │
 │  Hast du Strom vor Ort?                                     │
 │                                                             │
-│  JA + Remote-Zugriff gewünscht → v1.4 LTE Edition          │
+│  JA + Remote-Zugriff gewünscht → v1.5 LTE Edition          │
 │  JA + nur lokal               → v1.2 Full Edition          │
 │  NEIN (Batterie)              → v1.3 Deep Sleep Edition    │
 │                                                             │

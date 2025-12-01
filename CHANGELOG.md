@@ -4,6 +4,108 @@ Alle Änderungen am ForellenWächter Projekt.
 
 ---
 
+## [1.5.1] - 2024-12-01
+
+### 🔧 GPIO-Korrektur
+
+#### Behoben
+- **GPIO-Pins nach Hersteller-Spezifikation korrigiert:**
+  - STATUS_LED: GPIO 2 → GPIO 23
+  - RELAY_1: GPIO 32 (Alarm) ✓
+  - RELAY_2: GPIO 33 (Reserve 1) ✓
+  - RELAY_3: GPIO 23 → GPIO 25 (Reserve 2)
+  - RELAY_4: GPIO 26 (Belüftung) ✓
+  - DO_PIN: GPIO 32 → GPIO 36 (Konflikt mit Relay 1 behoben)
+  - WATER_LEVEL_PIN: GPIO 33 → GPIO 39 (Konflikt mit Relay 2 behoben)
+
+---
+
+## [1.5.0] - 2024-12-01
+
+### 🆕 Settings-Seite & erweiterte Features
+
+**Großes UI-Update mit Settings-Seite!**
+
+#### Hinzugefügt
+- **Settings-Seite (/settings)**
+  - Neuer Settings-Button (⚙️) im Dashboard-Header
+  - Modern design mit Tab-Navigation
+  - 3 Hauptbereiche:
+    1. **Kalibrierung:** pH 2-Punkt & TDS 1-Punkt UI
+    2. **Fischarten:** Preset-Auswahl mit automatischen Grenzwerten
+    3. **Wetter:** PLZ-Konfiguration für Wettervorhersage
+
+- **Fischarten-Voreinstellungen**
+  - 4 vordefinierte Fischarten:
+    - Forelle (8-16°C, pH 6.5-8.5)
+    - Regenbogenforelle (10-20°C, pH 6.5-8.0)
+    - Karpfen (15-28°C, pH 6.5-9.0)
+    - Tilapia (20-32°C, pH 6.5-9.0)
+  - Benutzerdefinierte Einstellungen möglich
+  - Automatisches Laden der Grenzwerte
+
+- **Wetter-Widget**
+  - Neue Wetter-Karte im Dashboard
+  - 24h Vorhersage über wttr.in
+  - PLZ-basierte Wetterinfo (Deutschland)
+  - localStorage für PLZ-Speicherung
+
+- **3-Modi Relay-Steuerung**
+  - Alle 4 Relays steuerbar: Auto/An/Aus
+  - Toggle-Funktion durch Klick
+  - Visuelles Feedback:
+    - Auto: Blauer Hintergrund
+    - An: Grüner Hintergrund
+    - Aus: Ausgegraut
+  - Mode-Labels unter jedem Button
+
+- **TDS im Wasserqualitäts-Chart**
+  - 3 Y-Achsen: pH, O₂, TDS
+  - Bessere Darstellung der Wasserqualität
+
+#### Geändert
+- Dashboard-Header: Flexbox-Layout mit Settings-Button
+- Relay-Buttons mit Mode-Anzeige
+- Footer: "© 2024 Andreas Sika"
+- Version auf v1.5.0 aktualisiert
+- API: POST /api/relay ohne state-Parameter (toggle)
+- Charts: TDS-Linie hinzugefügt
+
+#### Behoben
+- Chart-Overflow Bug: Charts mit fester Höhe (300px)
+- Watchdog-Resets in setup() und loop()
+- getLocalTime() mit Timeouts versehen
+- Browser-Crashes durch überlaufende Charts behoben
+
+---
+
+## [1.4.1] - 2024-12-01
+
+### 🔧 OTA & Kalibrierung
+
+#### Hinzugefügt
+- **OTA (Over-The-Air) Updates**
+  - ArduinoOTA Support
+  - Passwort-geschützt
+  - Netzwerk-Port in Arduino IDE
+  - Vollständige Dokumentation in docs/OTA_GUIDE.md
+
+- **Sensor-Kalibrierung**
+  - pH: 2-Punkt Kalibrierung (4.0 & 7.0)
+  - TDS: 1-Punkt Kalibrierung (707 ppm Standard)
+  - EEPROM-Speicherung mit Checksumme
+  - API-Endpoints:
+    - GET /api/calibration
+    - POST /api/calibration/ph
+    - POST /api/calibration/tds
+    - POST /api/calibration/reset
+  - Dokumentation in docs/CALIBRATION.md
+
+#### Behoben
+- Compilation Error: Forward Declarations hinzugefügt
+
+---
+
 ## [1.4.0] - 2024-12-01
 
 ### 🆕 LTE Remote Edition

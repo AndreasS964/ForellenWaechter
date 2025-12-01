@@ -1,6 +1,6 @@
 # 🔌 Hardware-Dokumentation
 
-Vollständige Hardware-Anleitung für den ForellenWächter v1.3.
+Vollständige Hardware-Anleitung für den ForellenWächter v1.5 LTE.
 
 ---
 
@@ -64,41 +64,45 @@ Vollständige Hardware-Anleitung für den ForellenWächter v1.3.
 │                                                                  │
 │   3.3V ●────────────────────────────────────────────● VIN (5V)  │
 │   GND  ●────────────────────────────────────────────● GND       │
-│   GPIO15 ●                                        ● GPIO13      │
-│   GPIO2  ●──── STATUS LED                         ● GPIO12 ────● RELAY 4
-│   GPIO4  ●──── DS18B20 DATA                       ● GPIO14 ────● RELAY 3
-│   GPIO16 ●                                        ● GPIO27 ────● RELAY 2
-│   GPIO17 ●                                        ● GPIO26 ────● RELAY 1
-│   GPIO5  ●──── SD CS                              ● GPIO25 ────● WATER LEVEL
-│   GPIO18 ●──── SD CLK                             ● GPIO33      │
-│   GPIO19 ●──── SD MISO                            ● GPIO32      │
+│   GPIO15 ●──── Buzzer                             ● GPIO13 ────● Alarm LED
+│   GPIO2  ●                                        ● GPIO12      │
+│   GPIO4  ●──── DS18B20 DATA                       ● GPIO14      │
+│   GPIO16 ●──── LTE RX                             ● GPIO27      │
+│   GPIO17 ●──── LTE TX                             ● GPIO26 ────● RELAY 4 (Belüftung)
+│   GPIO5  ●──── SD CS                              ● GPIO25 ────● RELAY 3 (Reserve 2)
+│   GPIO18 ●──── SD CLK                             ● GPIO33 ────● RELAY 2 (Reserve 1)
+│   GPIO19 ●──── SD MISO                            ● GPIO32 ────● RELAY 1 (Alarm)
 │   GPIO21 ●                                        ● GPIO35 ────● TDS SENSOR
 │   GPIO3  ●                                        ● GPIO34 ────● pH SENSOR
-│   GPIO1  ●                                        ● GPIO36 ────● BATTERY
-│   GPIO22 ●                                        ● GPIO39      │
-│   GPIO23 ●──── SD MOSI                            ● EN         │
+│   GPIO1  ●                                        ● GPIO36 ────● DO SENSOR
+│   GPIO22 ●                                        ● GPIO39 ────● WATER LEVEL
+│   GPIO23 ●──── STATUS LED / SD MOSI               ● EN         │
 │                                                                  │
 └────────────────────────────────────────────────────────────────┘
 ```
 
-### Pin-Übersicht Tabelle
+### Pin-Übersicht Tabelle (v1.5 LTE)
 
 | Pin | Funktion | Richtung | Hinweis |
 |-----|----------|----------|---------|
 | GPIO 4 | DS18B20 Data | Digital I/O | + 4.7kΩ Pullup nach 3.3V |
 | GPIO 34 | pH Sensor | Analog In | ADC1, 0-3.3V |
 | GPIO 35 | TDS Sensor | Analog In | ADC1, 0-3.3V |
-| GPIO 36 | Batterie | Analog In | ADC1, über Spannungsteiler! |
-| GPIO 25 | Wasserstand | Digital In | INPUT_PULLUP |
-| GPIO 26 | Relais 1 | Digital Out | LOW = EIN (Belüftung) |
-| GPIO 27 | Relais 2 | Digital Out | LOW = EIN |
-| GPIO 14 | Relais 3 | Digital Out | LOW = EIN |
-| GPIO 12 | Relais 4 | Digital Out | LOW = EIN |
+| GPIO 36 | DO Sensor | Analog In | ADC1, 0-3.3V (optional) |
+| GPIO 39 | Wasserstand | Digital In | INPUT_PULLUP |
+| GPIO 32 | Relais 1 | Digital Out | LOW = EIN (Alarm) |
+| GPIO 33 | Relais 2 | Digital Out | LOW = EIN (Reserve 1) |
+| GPIO 25 | Relais 3 | Digital Out | LOW = EIN (Reserve 2) |
+| GPIO 26 | Relais 4 | Digital Out | LOW = EIN (Belüftung) |
+| GPIO 23 | Status LED | Digital Out | Onboard oder extern |
+| GPIO 13 | Alarm LED | Digital Out | Externe rote LED |
+| GPIO 15 | Buzzer | Digital Out | Piezo-Buzzer |
 | GPIO 5 | SD Card CS | Digital Out | SPI |
 | GPIO 18 | SD Card CLK | Digital Out | SPI |
 | GPIO 19 | SD Card MISO | Digital In | SPI |
-| GPIO 23 | SD Card MOSI | Digital Out | SPI |
-| GPIO 2 | Status LED | Digital Out | Onboard oder extern |
+| GPIO 23 | SD Card MOSI | Digital Out | SPI (shared mit Status LED) |
+| GPIO 16 | LTE RX | Serial | HardwareSerial(1) |
+| GPIO 17 | LTE TX | Serial | HardwareSerial(1) |
 
 ---
 
