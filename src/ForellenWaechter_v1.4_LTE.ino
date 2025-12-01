@@ -149,6 +149,7 @@ bool airSensorFound = false;
 // ═══════════════════════════════════════════════════════════════════════════════════
 
 String getHTML();
+String getSettingsHTML();
 String getCSS();
 String getJS();
 
