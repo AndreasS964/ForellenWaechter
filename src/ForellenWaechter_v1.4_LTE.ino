@@ -112,16 +112,16 @@ struct TroutParameters {
 #define DO_PIN 36                    // Dissolved Oxygen (geändert von 32, da 32 = Relay 1)
 
 // Digital I/O
-#define WATER_LEVEL_PIN 39           // Float Switch (geändert von 33, da 33 = Relay 2)
-#define STATUS_LED 2
+#define WATER_LEVEL_PIN 39           // Float Switch
+#define STATUS_LED 23                // GPIO23 - Status LED
 #define ALARM_LED 13                 // Externe Alarm-LED (rot)
 #define BUZZER_PIN 15
 
-// Relais (Active LOW) - Laut Hersteller-Handbuch
-#define RELAY_1 32                   // GPIO32
-#define RELAY_2 33                   // GPIO33
-#define RELAY_3 23                   // GPIO23
-#define RELAY_4 26                   // GPIO26
+// Relais (Active LOW) - Korrigiert nach User-Angabe
+#define RELAY_1 32                   // GPIO32 - Alarm
+#define RELAY_2 33                   // GPIO33 - Reserve 1
+#define RELAY_3 25                   // GPIO25 - Reserve 2
+#define RELAY_4 26                   // GPIO26 - Belüftung
 
 // SD-Karte
 #define SD_CS 5
