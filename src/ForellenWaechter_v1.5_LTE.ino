@@ -1,17 +1,18 @@
 /*
  * ═══════════════════════════════════════════════════════════════════════════════════
- * ForellenWächter v1.4 - LTE Remote Edition
+ * ForellenWächter v1.5 - LTE Remote Edition
  * IoT Monitoring System mit Mobilfunk-Anbindung für Forellenzucht
  * ═══════════════════════════════════════════════════════════════════════════════════
- * 
- * NEU in v1.4:
+ *
+ * NEU in v1.5:
+ * - ⚙️ Settings-Seite mit 3 Tabs (Kalibrierung, Fischarten, Wetter)
+ * - 🐟 Fischarten-Presets (10 Arten) mit Temperatur- und pH-Bereichen
+ * - 🎛️ 3-Modi Relay-Steuerung (Auto/An/Aus) für alle 4 Relais
+ * - 🌡️ Wetter-Widget mit Live-Daten
+ * - 🎨 Verbesserte UI mit besserem Dropdown-Styling
  * - 📡 LTE/4G Mobilfunk (SIM7600E) für Remote-Zugriff
  * - 📧 E-Mail Alarme bei kritischen Werten
  * - 🫧 Dissolved Oxygen Sensor (optional)
- * - 🎨 Komplett überarbeitetes Dashboard
- * - 📊 Erweiterte Datenvisualisierung
- * - 🔄 OTA Updates vorbereitet
- * - 🐟 Fischdatenbank-Vorbereitung
  * 
  * Hardware:
  * - ESP32 DevKit v1 / LILYGO T-SIM7600E
@@ -183,7 +184,7 @@ struct SystemStatus {
   unsigned long lastEmailSent = 0;
   int alarmCount = 0;
   int dailyAlarms = 0;
-  String firmwareVersion = "1.4.1";
+  String firmwareVersion = "1.5.1";
 } sysStatus;
 
 // Kalibrierungsdaten (2-Punkt Kalibrierung)
@@ -287,7 +288,7 @@ void setup() {
   // NTP-Sync wird später in loop() durchgeführt (nicht in setup(), um Watchdog zu vermeiden)
   lastNTPSync = millis() - NTP_SYNC_INTERVAL + 30000; // Erstes Sync nach 30 Sekunden
 
-  Serial.println("\n✅ ForellenWächter v1.4 bereit!");
+  Serial.println("\n✅ ForellenWächter v1.5 bereit!");
   Serial.println("══════════════════════════════════════════════\n");
   
   // Startup-Benachrichtigung
@@ -299,7 +300,7 @@ void setup() {
 void printBanner() {
   Serial.println("\n");
   Serial.println("╔══════════════════════════════════════════════════════╗");
-  Serial.println("║   🐟 ForellenWächter v1.4 - LTE Remote Edition       ║");
+  Serial.println("║   🐟 ForellenWächter v1.5 - LTE Remote Edition       ║");
   Serial.println("║   IoT Monitoring System für Aquakultur              ║");
   Serial.println("╚══════════════════════════════════════════════════════╝\n");
   
@@ -1591,7 +1592,7 @@ String getHTML() {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ForellenWächter v1.4</title>
+  <title>ForellenWächter v1.5</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐟</text></svg>">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
@@ -2512,12 +2513,17 @@ String getSettingsHTML() {
       margin-bottom: 30px;
     }
     .back-btn {
-      font-size: 1.5em;
+      font-size: 2.5em;
       text-decoration: none;
       opacity: 0.8;
-      transition: opacity 0.3s;
+      transition: all 0.3s;
+      cursor: pointer;
+      padding: 5px;
     }
-    .back-btn:hover { opacity: 1; }
+    .back-btn:hover {
+      opacity: 1;
+      transform: translateX(-5px);
+    }
     h1 { font-size: 1.8em; font-weight: 300; }
     .tabs {
       display: flex;
@@ -2566,16 +2572,32 @@ String getSettingsHTML() {
     }
     input, select {
       width: 100%;
-      padding: 12px;
-      background: rgba(255,255,255,0.1);
-      border: 1px solid rgba(255,255,255,0.2);
+      padding: 14px;
+      background: rgba(255,255,255,0.15);
+      border: 2px solid rgba(255,255,255,0.3);
       border-radius: 8px;
       color: white;
+      font-size: 1.1em;
+      font-weight: 500;
+    }
+    select {
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='white' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 40px;
+    }
+    select option {
+      background: #1e3a8a;
+      color: white;
+      padding: 10px;
       font-size: 1em;
     }
     input:focus, select:focus {
       outline: none;
       border-color: #0ea5e9;
+      background: rgba(255,255,255,0.2);
     }
     button {
       padding: 12px 24px;
@@ -2683,10 +2705,16 @@ String getSettingsHTML() {
           <label>Fischart</label>
           <select id="fishSpecies" onchange="loadFishPreset()">
             <option value="custom">Benutzerdefiniert</option>
-            <option value="trout">Forelle (Salmo trutta)</option>
+            <option value="trout">Bachforelle (Salmo trutta)</option>
             <option value="rainbow">Regenbogenforelle (Oncorhynchus mykiss)</option>
+            <option value="brook">Bachsaibling (Salvelinus fontinalis)</option>
+            <option value="char">Seesaibling (Salvelinus alpinus)</option>
             <option value="carp">Karpfen (Cyprinus carpio)</option>
-            <option value="tilapia">Tilapia</option>
+            <option value="tilapia">Tilapia (Oreochromis niloticus)</option>
+            <option value="catfish">Wels (Silurus glanis)</option>
+            <option value="perch">Flussbarsch (Perca fluviatilis)</option>
+            <option value="pike">Hecht (Esox lucius)</option>
+            <option value="zander">Zander (Sander lucioperca)</option>
           </select>
         </div>
         <div class="form-group">
@@ -2725,7 +2753,8 @@ String getSettingsHTML() {
           <label>Postleitzahl (DE)</label>
           <input type="text" id="zipCode" placeholder="z.B. 10115" maxlength="5">
         </div>
-        <button onclick="saveWeatherSettings()">Speichern</button>
+        <button onclick="saveWeatherSettings()">Speichern & Wetter laden</button>
+        <button onclick="fetchWeather()" class="relay-btn" style="width: 100%; margin-top: 10px; background: rgba(14, 165, 233, 0.2);">🔄 Wetter aktualisieren</button>
         <div id="weatherSuccess" class="success">✅ Gespeichert!</div>
         <div id="weatherInfo" style="margin-top:20px; display:none;">
           <h3>Aktuelles Wetter:</h3>
@@ -2794,8 +2823,14 @@ String getSettingsHTML() {
       const presets = {
         trout: { tempMin: 8, tempOptimal: 12, tempMax: 16, phMin: 6.5, phMax: 8.5 },
         rainbow: { tempMin: 10, tempOptimal: 15, tempMax: 20, phMin: 6.5, phMax: 8.0 },
+        brook: { tempMin: 8, tempOptimal: 13, tempMax: 18, phMin: 6.5, phMax: 8.0 },
+        char: { tempMin: 8, tempOptimal: 11, tempMax: 16, phMin: 6.5, phMax: 8.0 },
         carp: { tempMin: 15, tempOptimal: 24, tempMax: 28, phMin: 6.5, phMax: 9.0 },
-        tilapia: { tempMin: 20, tempOptimal: 28, tempMax: 32, phMin: 6.5, phMax: 9.0 }
+        tilapia: { tempMin: 20, tempOptimal: 28, tempMax: 32, phMin: 6.5, phMax: 9.0 },
+        catfish: { tempMin: 18, tempOptimal: 24, tempMax: 28, phMin: 6.5, phMax: 8.5 },
+        perch: { tempMin: 12, tempOptimal: 19, tempMax: 24, phMin: 6.5, phMax: 8.5 },
+        pike: { tempMin: 10, tempOptimal: 16, tempMax: 22, phMin: 6.5, phMax: 8.5 },
+        zander: { tempMin: 12, tempOptimal: 20, tempMax: 25, phMin: 6.5, phMax: 8.5 }
       };
 
       if (presets[species]) {
@@ -2837,6 +2872,48 @@ String getSettingsHTML() {
       localStorage.setItem('weatherZip', zip);
       document.getElementById('weatherSuccess').style.display = 'block';
       setTimeout(() => document.getElementById('weatherSuccess').style.display = 'none', 3000);
+
+      // Wetter direkt anzeigen
+      await fetchWeather();
+    }
+
+    async function fetchWeather() {
+      const zip = document.getElementById('zipCode').value || localStorage.getItem('weatherZip') || '10115';
+      const weatherInfo = document.getElementById('weatherInfo');
+      const weatherData = document.getElementById('weatherData');
+
+      try {
+        weatherData.innerHTML = '⏳ Lade Wetterdaten...';
+        weatherInfo.style.display = 'block';
+
+        // Nutze wttr.in JSON API für deutsche Wetterdaten
+        const response = await fetch(`https://wttr.in/${zip}?format=j1`);
+        const data = await response.json();
+
+        const current = data.current_condition[0];
+        const today = data.weather[0];
+
+        weatherData.innerHTML = `
+          <div style="display: grid; gap: 15px;">
+            <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px;">
+              <h4 style="margin: 0 0 10px 0;">Aktuell:</h4>
+              <p style="margin: 5px 0; font-size: 1.1em;">🌡️ Temperatur: <strong>${current.temp_C}°C</strong> (gefühlt ${current.FeelsLikeC}°C)</p>
+              <p style="margin: 5px 0;">☁️ ${current.lang_de[0].value}</p>
+              <p style="margin: 5px 0;">💧 Luftfeuchtigkeit: ${current.humidity}%</p>
+              <p style="margin: 5px 0;">💨 Wind: ${current.windspeedKmph} km/h aus ${current.winddir16Point}</p>
+              <p style="margin: 5px 0;">🌧️ Niederschlag: ${current.precipMM} mm</p>
+            </div>
+            <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px;">
+              <h4 style="margin: 0 0 10px 0;">Heute (${today.date}):</h4>
+              <p style="margin: 5px 0;">🌡️ Max: <strong>${today.maxtempC}°C</strong> / Min: <strong>${today.mintempC}°C</strong></p>
+              <p style="margin: 5px 0;">🌅 Sonnenaufgang: ${today.astronomy[0].sunrise}</p>
+              <p style="margin: 5px 0;">🌇 Sonnenuntergang: ${today.astronomy[0].sunset}</p>
+            </div>
+          </div>
+        `;
+      } catch (e) {
+        weatherData.innerHTML = `❌ Fehler beim Laden der Wetterdaten: ${e.message}<br><small>Bitte überprüfen Sie die Postleitzahl.</small>`;
+      }
     }
 
     // Lade aktuelle Einstellungen
@@ -2852,7 +2929,11 @@ String getSettingsHTML() {
       } catch (e) {}
 
       const zip = localStorage.getItem('weatherZip');
-      if (zip) document.getElementById('zipCode').value = zip;
+      if (zip) {
+        document.getElementById('zipCode').value = zip;
+        // Wetter automatisch laden wenn ZIP gespeichert ist
+        fetchWeather();
+      }
     }
 
     loadSettings();
