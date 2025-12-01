@@ -14,8 +14,8 @@
 
 ForellenWächter ist ein umfassendes Monitoring-System für Forellenaufzuchtanlagen. Es wurde speziell für Standorte mit natürlicher Quellwasserversorgung entwickelt und ermöglicht zuverlässiges Monitoring - auch von entfernten Standorten aus.
 
-**Entwickelt für:** Lucas Haug Forellenzucht  
-**Stromversorgung:** Wasserkraft-Turbine (~200W) ⚡💧
+**Anwendung:** Forellenzucht-Monitoring
+**Stromversorgung:** Flexibel (Netz/Batterie/Wasserkraft) ⚡💧
 
 ### ✨ Features v1.4
 
@@ -63,30 +63,28 @@ ForellenWächter ist ein umfassendes Monitoring-System für Forellenaufzuchtanla
 
 ### Kernkomponenten (alle Versionen)
 
-| Komponente | Preis |
-|------------|-------|
-| ESP32 DevKit v1 | 8€ |
-| 2x DS18B20 (wasserdicht) | 6€ |
-| pH-Sensor Modul | 15€ |
-| TDS-Sensor Modul | 10€ |
-| Float Switch | 5€ |
-| 4-Kanal Relais | 6€ |
-| SD-Karten Modul | 4€ |
-| Gehäuse IP65 | 15€ |
-| Diverses (Kabel etc.) | 15€ |
+| Komponente | Bezugsquelle |
+|------------|--------------|
+| ESP32 DevKit v1 | Amazon/AliExpress |
+| 2x DS18B20 (wasserdicht) | Amazon |
+| pH-Sensor Modul | Amazon |
+| TDS-Sensor Modul | Amazon |
+| Float Switch | Amazon |
+| 4-Kanal Relais | Amazon |
+| SD-Karten Modul | Amazon |
+| Gehäuse IP65 | Amazon |
+| Diverses (Kabel etc.) | Baumarkt/Elektronik |
 
-**Basis: ~85€**
+**Hinweis:** Detaillierte Einkaufsliste siehe [docs/HARDWARE.md](docs/HARDWARE.md)
 
 ### Zusatz für v1.4 LTE
 
-| Komponente | Preis |
-|------------|-------|
-| LILYGO T-SIM7600E ODER SIM7600E Modul | 35-45€ |
-| SIM-Karte (Daten) | 5€/Monat |
-| LTE Antenne | 15€ |
-| DFRobot DO-Sensor (optional) | 80€ |
-
-**v1.4 Gesamt: ~150-250€**
+| Komponente | Bezugsquelle |
+|------------|--------------|
+| LILYGO T-SIM7600E ODER SIM7600E Modul | Amazon/AliExpress |
+| SIM-Karte (Daten) | Mobilfunkanbieter |
+| LTE Antenne | Amazon |
+| DFRobot DO-Sensor (optional) | DFRobot Shop |
 
 ### Verkabelung (Kurzübersicht)
 
@@ -136,7 +134,7 @@ git clone https://github.com/AndreasS964/ForellenWaechter.git
 ```cpp
 // WiFi
 const char* AP_SSID = "ForellenWaechter";
-const char* AP_PASSWORD = "Lucas2024";
+const char* AP_PASSWORD = "YourPassword123";  // Ändern!
 
 // LTE (v1.4)
 #define LTE_APN "internet"
@@ -303,8 +301,7 @@ MIT License - siehe [LICENSE](LICENSE)
 
 ## 🙏 Credits
 
-- **Entwicklung:** Andreas
-- **Für:** Lucas Haug Forellenzucht
+Entwickelt für professionelle Forellenzucht-Monitoring
 
 ---
 

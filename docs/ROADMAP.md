@@ -75,7 +75,7 @@ Geplante Features und Entwicklungsrichtung für zukünftige Versionen.
 - Individuelle Grenzwerte pro Becken
 
 **Slave-Hardware (günstig):**
-- ESP32-C3 Mini (~5€)
+- ESP32-C3 Mini (kostengünstig)
 - Nur benötigte Sensoren
 - Batterie oder Solar möglich
 

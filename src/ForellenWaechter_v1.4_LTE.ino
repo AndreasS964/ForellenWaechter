@@ -1,7 +1,7 @@
 /*
  * ═══════════════════════════════════════════════════════════════════════════════════
  * ForellenWächter v1.4 - LTE Remote Edition
- * IoT Monitoring System mit Mobilfunk-Anbindung für Lucas Haug Forellenzucht
+ * IoT Monitoring System mit Mobilfunk-Anbindung für Forellenzucht
  * ═══════════════════════════════════════════════════════════════════════════════════
  * 
  * NEU in v1.4:
@@ -24,7 +24,7 @@
  * 
  * Stromversorgung: Wasserkraft-Turbine (~200W)
  * 
- * Autor: Andreas
+ * Open Source Projekt
  * Lizenz: MIT
  * Repository: https://github.com/AndreasS964/ForellenWaechter
  * ═══════════════════════════════════════════════════════════════════════════════════
@@ -61,7 +61,7 @@
 
 // --- WiFi (lokaler Zugriff) ---
 const char* AP_SSID = "ForellenWaechter";
-const char* AP_PASSWORD = "Lucas2024";
+const char* AP_PASSWORD = "YourPassword123";  // ÄNDERN!
 const char* STA_SSID = "";           // Optional: Heimnetz
 const char* STA_PASSWORD = "";
 const char* MDNS_NAME = "forellenwaechter";
@@ -74,7 +74,7 @@ const char* MDNS_NAME = "forellenwaechter";
 // --- E-Mail Konfiguration (über HTTP Webhook) ---
 // Nutze einen kostenlosen Service wie EmailJS, Mailgun, oder eigenen Server
 const char* EMAIL_WEBHOOK_URL = "https://maker.ifttt.com/trigger/forellen_alarm/with/key/YOUR_IFTTT_KEY";
-const char* EMAIL_RECIPIENT = "lucas@example.com";
+const char* EMAIL_RECIPIENT = "your-email@example.com";  // ÄNDERN!
 #define EMAIL_COOLDOWN_MIN 30        // Min. Minuten zwischen E-Mails
 
 // --- Sensor Grenzwerte (Regenbogenforelle) ---
@@ -238,7 +238,7 @@ void printBanner() {
   Serial.println("\n");
   Serial.println("╔══════════════════════════════════════════════════════╗");
   Serial.println("║   🐟 ForellenWächter v1.4 - LTE Remote Edition       ║");
-  Serial.println("║   Lucas Haug Forellenzucht                           ║");
+  Serial.println("║   IoT Monitoring System für Aquakultur              ║");
   Serial.println("║   Powered by Wasserkraft 💧⚡                         ║");
   Serial.println("╚══════════════════════════════════════════════════════╝\n");
   
@@ -1609,7 +1609,7 @@ String getHTML() {
     <header>
       <div class="logo">🐟</div>
       <h1>ForellenWächter</h1>
-      <p class="subtitle">Lucas Haug Forellenzucht • Powered by Wasserkraft ⚡</p>
+      <p class="subtitle">IoT Monitoring für Aquakultur • Powered by Wasserkraft ⚡</p>
     </header>
     
     <div class="alarm-banner" id="alarmBanner">

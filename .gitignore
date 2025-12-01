@@ -1,0 +1,33 @@
+# ForellenWächter .gitignore
+
+# Konfigurationsdateien mit sensiblen Daten
+config.h
+secrets.h
+credentials.h
+
+# Arduino IDE
+*.ino.bak
+*.ino.cpp
+*.ino.hex
+
+# VS Code / PlatformIO
+.vscode/
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# Mac
+.DS_Store
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# Logs und Daten
+*.log
+logs/
+data/
+*.csv
+
+# SD-Karte Backups
+sd_backup/

@@ -28,7 +28,7 @@
  * - v1.2 (24/7 WiFi): ~4 Tage
  * - v1.3 (Deep Sleep): ~8 MONATE!
  * 
- * Autor: Andreas
+ * Open Source Projekt
  * Lizenz: MIT
  * ═══════════════════════════════════════════════════════════════════════════
  */
