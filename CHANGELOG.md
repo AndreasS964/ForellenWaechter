@@ -4,6 +4,58 @@ Alle Änderungen am ForellenWächter Projekt.
 
 ---
 
+## [1.6.1] - 2024-12-03
+
+### 📱 Remote Control Edition - Kostenloser Fernzugriff!
+
+**Telegram Bot & DynDNS Integration für weltweiten Zugriff**
+
+#### Hinzugefügt
+
+- **Telegram Bot Support (optional)**
+  - Komplett kostenlos, für immer!
+  - Push-Benachrichtigungen bei Alarmen
+  - Befehle: /status, /temp, /power, /alarm, /relay1-4
+  - Bidirektionale Steuerung (Relais schalten)
+  - UniversalTelegramBot Library Integration
+  - Feature-Toggle: `ENABLE_TELEGRAM`
+  - Dokumentation: `docs/TELEGRAM_SETUP.md`
+
+- **DynDNS Support (optional)**
+  - DuckDNS Integration (kostenlos)
+  - Auto-Update alle 5 Minuten
+  - Dashboard von überall: `http://forellenwaechter.duckdns.org`
+  - Feature-Toggle: `ENABLE_DYNDNS`
+  - Dokumentation: `docs/DYNDNS_SETUP.md`
+
+- **Setup-Dokumentation**
+  - Schritt-für-Schritt Telegram Bot Setup
+  - Schritt-für-Schritt DynDNS Setup
+  - Troubleshooting-Abschnitte
+  - Sicherheits-Hinweise
+
+- **Konfiguration**
+  - `TELEGRAM_BOT_TOKEN` - Bot Token von @BotFather
+  - `TELEGRAM_CHAT_ID` - Chat-ID von @userinfobot
+  - `DYNDNS_DOMAIN` - DuckDNS Subdomain
+  - `DYNDNS_TOKEN` - DuckDNS Token
+  - config.example.h mit allen neuen Parametern
+
+#### Geändert
+
+- Firmware-Version: 1.6.0 → 1.6.1
+- README.md: v1.6.1 Features + Telegram Badge
+- config.example.h: Telegram & DynDNS Sektion
+
+#### Hinweis
+
+- **Telegram Bot**: Funktioniert IMMER (auch hinter CG-NAT)
+- **DynDNS**: Braucht öffentliche IP-Adresse vom Provider
+- **Beide optional**: Können individuell aktiviert/deaktiviert werden
+- **Kostenlos**: Beide Features ohne monatliche Kosten nutzbar
+
+---
+
 ## [1.6.0] - 2024-12-03
 
 ### ⚡ Turbine & Power Edition - Autarke Stromversorgung!

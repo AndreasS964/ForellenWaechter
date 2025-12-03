@@ -2,11 +2,12 @@
 
 **ESP32-basiertes IoT-Monitoring-System für Forellenzucht**
 
-![Version](https://img.shields.io/badge/Version-1.6-blue)
+![Version](https://img.shields.io/badge/Version-1.6.1-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Platform](https://img.shields.io/badge/Platform-ESP32-red)
 ![LTE](https://img.shields.io/badge/LTE-Remote-orange)
 ![Power](https://img.shields.io/badge/Power-Hydro-cyan)
+![Telegram](https://img.shields.io/badge/Telegram-Bot-blue)
 ![Status](https://img.shields.io/badge/Status-Active-brightgreen)
 
 ---
@@ -16,11 +17,19 @@
 ForellenWächter ist ein umfassendes Monitoring-System für Forellenaufzuchtanlagen. Es wurde speziell für Standorte mit natürlicher Quellwasserversorgung entwickelt und ermöglicht zuverlässiges Monitoring - auch von entfernten Standorten aus.
 
 **Anwendung:** Forellenzucht-Monitoring
-**Stromversorgung:** Autark mit Wasserkraft-Turbine ⚡💧 **NEU in v1.6!**
+**Stromversorgung:** Autark mit Wasserkraft-Turbine ⚡💧
+**Fernzugriff:** Telegram Bot + DynDNS 📱🌐 **NEU in v1.6.1!**
 
-### ✨ Features v1.6 - Turbine & Power Edition
+### ✨ Features v1.6.1 - Remote Control Edition
 
-**🆕 NEU in v1.6:**
+**🆕 NEU in v1.6.1:**
+| Feature | Beschreibung |
+|---------|--------------|
+| 📱 **Telegram Bot** | Fernsteuerung & Push-Alarme (optional, kostenlos) |
+| 🌐 **DynDNS Support** | Dashboard von überall via DuckDNS (optional) |
+| 📚 **Setup-Guides** | Detaillierte Anleitungen für Telegram & DynDNS |
+
+**Features aus v1.6:**
 | Feature | Beschreibung |
 |---------|--------------|
 | ⚡ **Wasserturbine** | 10W Mini-Hydro-Generator für autarke Stromversorgung |
@@ -56,6 +65,7 @@ ForellenWächter ist ein umfassendes Monitoring-System für Forellenaufzuchtanla
 
 | Version | Anwendung | Features |
 |---------|-----------|----------|
+| **v1.6.1 Remote** | Wasserkraft + Fernzugriff | 📱 Telegram Bot + 🌐 DynDNS (kostenlos!) |
 | **v1.6 Turbine** | Wasserkraft + Remote | ⚡ Turbine, Flow & Power Monitor, Batterie-Status |
 | **v1.5 LTE** | Netzbetrieb + Remote | Settings-Seite, Fischarten-Presets, 3-Modi Relays, Wetter |
 | **v1.4 LTE** | Netzbetrieb + Remote | LTE, E-Mail, DO-Sensor, OTA, Kalibrierung |

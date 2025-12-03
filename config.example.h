@@ -116,7 +116,28 @@
 // Deep Sleep (nur v1.3)
 #define SLEEP_DURATION_SEC 600        // 10 Minuten
 
-// Feature Toggles
+// ═══════════════════════════════════════════════════════════════════════════════════
+// TELEGRAM BOT (v1.6.1) - Optional
+// ═══════════════════════════════════════════════════════════════════════════════════
+
+// Siehe: docs/TELEGRAM_SETUP.md für Anleitung
+const char* TELEGRAM_BOT_TOKEN = "YOUR_BOT_TOKEN";  // Von @BotFather
+const char* TELEGRAM_CHAT_ID = "YOUR_CHAT_ID";      // Von @userinfobot
+#define TELEGRAM_CHECK_INTERVAL 2000  // Nachrichten-Check (ms)
+
+// ═══════════════════════════════════════════════════════════════════════════════════
+// DYNDNS (v1.6.1) - Optional
+// ═══════════════════════════════════════════════════════════════════════════════════
+
+// Siehe: docs/DYNDNS_SETUP.md für Anleitung
+const char* DYNDNS_DOMAIN = "forellenwaechter.duckdns.org";  // Deine DuckDNS Domain
+const char* DYNDNS_TOKEN = "YOUR_DUCKDNS_TOKEN";             // Token von duckdns.org
+#define DYNDNS_UPDATE_INTERVAL 300000  // Update alle 5 Minuten
+
+// ═══════════════════════════════════════════════════════════════════════════════════
+// FEATURE TOGGLES
+// ═══════════════════════════════════════════════════════════════════════════════════
+
 #define ENABLE_LTE true               // LTE aktivieren (v1.4+)
 #define ENABLE_WIFI true              // WiFi aktivieren
 #define ENABLE_EMAIL_ALERTS true      // E-Mail Alarme aktivieren
@@ -124,6 +145,8 @@
 #define ENABLE_SD_LOGGING true        // SD-Karte aktivieren
 #define ENABLE_TURBINE true           // Wasserturbine Flow & Power Monitoring (v1.6)
 #define ENABLE_BATTERY_MONITOR true   // Batterie-Überwachung (v1.6)
+#define ENABLE_TELEGRAM false         // Telegram Bot (v1.6.1)
+#define ENABLE_DYNDNS false           // DynDNS Auto-Update (v1.6.1)
 
 // Test-Modus (Fake-Sensordaten)
 #define TEST_MODE false               // true = Test-Werte, false = echte Sensoren
