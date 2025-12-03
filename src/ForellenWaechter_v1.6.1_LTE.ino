@@ -1117,68 +1117,79 @@ void printSensorValues() {
 
 void checkAlarms() {
   bool alarm = false;
-  String reasons = "";
-  
+  char reasons[256] = "";  // Static buffer statt String (Memory-Optimierung)
+  char tempBuf[64];
+
   // Temperatur
   if (sensors.waterTemp > troutParams.tempCritical) {
     alarm = true;
-    reasons += "Temp KRITISCH (" + String(sensors.waterTemp, 1) + "°C); ";
+    snprintf(tempBuf, sizeof(tempBuf), "Temp KRITISCH (%.1f°C); ", sensors.waterTemp);
+    strncat(reasons, tempBuf, sizeof(reasons) - strlen(reasons) - 1);
   } else if (sensors.waterTemp < troutParams.tempMin) {
     alarm = true;
-    reasons += "Temp niedrig (" + String(sensors.waterTemp, 1) + "°C); ";
+    snprintf(tempBuf, sizeof(tempBuf), "Temp niedrig (%.1f°C); ", sensors.waterTemp);
+    strncat(reasons, tempBuf, sizeof(reasons) - strlen(reasons) - 1);
   } else if (sensors.waterTemp > troutParams.tempMax) {
     alarm = true;
-    reasons += "Temp hoch (" + String(sensors.waterTemp, 1) + "°C); ";
+    snprintf(tempBuf, sizeof(tempBuf), "Temp hoch (%.1f°C); ", sensors.waterTemp);
+    strncat(reasons, tempBuf, sizeof(reasons) - strlen(reasons) - 1);
   }
-  
+
   // pH
   if (sensors.ph < troutParams.phMin) {
     alarm = true;
-    reasons += "pH niedrig (" + String(sensors.ph, 2) + "); ";
+    snprintf(tempBuf, sizeof(tempBuf), "pH niedrig (%.2f); ", sensors.ph);
+    strncat(reasons, tempBuf, sizeof(reasons) - strlen(reasons) - 1);
   } else if (sensors.ph > troutParams.phMax) {
     alarm = true;
-    reasons += "pH hoch (" + String(sensors.ph, 2) + "); ";
+    snprintf(tempBuf, sizeof(tempBuf), "pH hoch (%.2f); ", sensors.ph);
+    strncat(reasons, tempBuf, sizeof(reasons) - strlen(reasons) - 1);
   }
-  
+
   // TDS
   if (sensors.tds > troutParams.tdsMax) {
     alarm = true;
-    reasons += "TDS hoch (" + String(sensors.tds, 0) + "ppm); ";
+    snprintf(tempBuf, sizeof(tempBuf), "TDS hoch (%.0fppm); ", sensors.tds);
+    strncat(reasons, tempBuf, sizeof(reasons) - strlen(reasons) - 1);
   }
-  
+
   // Sauerstoff
   if (ENABLE_DO_SENSOR && sensors.dissolvedOxygen < troutParams.doMin) {
     alarm = true;
-    reasons += "O2 niedrig (" + String(sensors.dissolvedOxygen, 1) + "mg/L); ";
+    snprintf(tempBuf, sizeof(tempBuf), "O2 niedrig (%.1fmg/L); ", sensors.dissolvedOxygen);
+    strncat(reasons, tempBuf, sizeof(reasons) - strlen(reasons) - 1);
   }
-  
+
   // Wasserlevel
   if (!sensors.waterLevelOK) {
     alarm = true;
-    reasons += "Wasserlevel NIEDRIG; ";
+    strncat(reasons, "Wasserlevel NIEDRIG; ", sizeof(reasons) - strlen(reasons) - 1);
   }
 
   // Durchfluss-Alarm (v1.6)
   if (ENABLE_TURBINE && sensors.flowRate < FLOW_MIN_ALARM) {
     alarm = true;
-    reasons += "Durchfluss zu niedrig (" + String(sensors.flowRate, 1) + "L/min); ";
+    snprintf(tempBuf, sizeof(tempBuf), "Durchfluss zu niedrig (%.1fL/min); ", sensors.flowRate);
+    strncat(reasons, tempBuf, sizeof(reasons) - strlen(reasons) - 1);
   }
 
   // Batterie-Alarm (v1.6)
   if (ENABLE_BATTERY_MONITOR && sensors.batteryLow) {
     alarm = true;
-    reasons += "Batterie NIEDRIG (" + String(sensors.batteryVoltage, 1) + "V); ";
+    snprintf(tempBuf, sizeof(tempBuf), "Batterie NIEDRIG (%.1fV); ", sensors.batteryVoltage);
+    strncat(reasons, tempBuf, sizeof(reasons) - strlen(reasons) - 1);
   }
 
   // Trailing "; " entfernen
-  if (reasons.length() > 2) {
-    reasons = reasons.substring(0, reasons.length() - 2);
+  size_t len = strlen(reasons);
+  if (len > 2) {
+    reasons[len - 2] = '\0';  // Entferne "; "
   }
 
   // Status aktualisieren
   bool wasAlarm = sensors.alarmActive;
   sensors.alarmActive = alarm;
-  sensors.alarmReason = reasons;
+  sensors.alarmReason = String(reasons);  // Nur eine String-Zuweisung am Ende
   
   // Bei neuem Alarm
   if (alarm && !wasAlarm) {
