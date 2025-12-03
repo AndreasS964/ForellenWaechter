@@ -303,20 +303,6 @@ ForellenWaechter/
 
 ---
 
-## 🔮 Roadmap
-
-| Version | Features | Status |
-|---------|----------|--------|
-| **v1.4** | LTE, E-Mail, DO-Sensor | ✅ Aktuell |
-| v1.5 | Multi-Becken (ESP-NOW) | 🚧 Q1 2025 |
-| v1.6 | Fischdatenbank | 📅 Q2 2025 |
-| v1.7 | Automatisierung | 📅 Q3 2025 |
-| v2.0 | Mobile App, Cloud | 📅 Q4 2025 |
-
-Details: [docs/ROADMAP.md](docs/ROADMAP.md)
-
----
-
 ## 🐛 Troubleshooting
 
 | Problem | Lösung |
@@ -336,18 +322,10 @@ MIT License - siehe [LICENSE](LICENSE)
 
 ---
 
-## 🙏 Credits
-
-Entwickelt für professionelle Forellenzucht-Monitoring
-
----
-
 ## 📬 Beitragen
 
 **Repository:** https://github.com/AndreasS964/ForellenWaechter
 
 Issues und Pull Requests sind willkommen!
 
----
 
-*Made with ❤️ für die Forellen* 🐟
