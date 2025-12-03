@@ -72,6 +72,31 @@
 #define DO_OPTIMAL 9.0
 
 // ═══════════════════════════════════════════════════════════════════════════════════
+// TURBINEN-KONFIGURATION (v1.6)
+// ═══════════════════════════════════════════════════════════════════════════════════
+
+// Hall-Sensor Kalibrierung
+#define TURBINE_PULSES_PER_LITER 450  // Impulse pro Liter (experimentell bestimmen!)
+#define TURBINE_VOLTAGE 12.0          // Nennspannung (V)
+#define TURBINE_MAX_POWER 10.0        // Maximale Leistung (W)
+
+// Durchfluss-Alarm
+#define FLOW_MIN_ALARM 5.0            // Min. Durchfluss L/min (Alarm wenn unterschritten)
+
+// ═══════════════════════════════════════════════════════════════════════════════════
+// BATTERIE-KONFIGURATION (v1.6)
+// ═══════════════════════════════════════════════════════════════════════════════════
+
+// Spannungsteiler (R1 = oberer Widerstand, R2 = unterer Widerstand)
+#define BATTERY_R1 10000.0            // 10kΩ
+#define BATTERY_R2 3300.0             // 3.3kΩ
+
+// Spannungsgrenzen für Blei/Gel-Batterien
+#define BATTERY_FULL 13.8             // 100% Ladespannung (V)
+#define BATTERY_EMPTY 10.5            // 0% Tiefentladung (V)
+#define BATTERY_WARNING 11.5          // Warnschwelle (V)
+
+// ═══════════════════════════════════════════════════════════════════════════════════
 // ZEITINTERVALLE (Millisekunden)
 // ═══════════════════════════════════════════════════════════════════════════════════
 
@@ -79,6 +104,7 @@
 #define LOG_INTERVAL 300000           // SD-Logging (5 Minuten)
 #define LTE_CHECK_INTERVAL 60000      // LTE Status Check (1 Minute)
 #define HISTORY_INTERVAL 300000       // Chart-History Update (5 Minuten)
+#define WEATHER_UPDATE_INTERVAL 43200000  // Wetter-Update (12h = 2x täglich)
 
 // ═══════════════════════════════════════════════════════════════════════════════════
 // ERWEITERTE EINSTELLUNGEN
@@ -90,12 +116,37 @@
 // Deep Sleep (nur v1.3)
 #define SLEEP_DURATION_SEC 600        // 10 Minuten
 
-// Feature Toggles
-#define ENABLE_LTE true               // LTE aktivieren (v1.4)
+// ═══════════════════════════════════════════════════════════════════════════════════
+// TELEGRAM BOT (v1.6.1) - Optional
+// ═══════════════════════════════════════════════════════════════════════════════════
+
+// Siehe: docs/TELEGRAM_SETUP.md für Anleitung
+const char* TELEGRAM_BOT_TOKEN = "YOUR_BOT_TOKEN";  // Von @BotFather
+const char* TELEGRAM_CHAT_ID = "YOUR_CHAT_ID";      // Von @userinfobot
+#define TELEGRAM_CHECK_INTERVAL 2000  // Nachrichten-Check (ms)
+
+// ═══════════════════════════════════════════════════════════════════════════════════
+// DYNDNS (v1.6.1) - Optional
+// ═══════════════════════════════════════════════════════════════════════════════════
+
+// Siehe: docs/DYNDNS_SETUP.md für Anleitung
+const char* DYNDNS_DOMAIN = "forellenwaechter.duckdns.org";  // Deine DuckDNS Domain
+const char* DYNDNS_TOKEN = "YOUR_DUCKDNS_TOKEN";             // Token von duckdns.org
+#define DYNDNS_UPDATE_INTERVAL 300000  // Update alle 5 Minuten
+
+// ═══════════════════════════════════════════════════════════════════════════════════
+// FEATURE TOGGLES
+// ═══════════════════════════════════════════════════════════════════════════════════
+
+#define ENABLE_LTE true               // LTE aktivieren (v1.4+)
 #define ENABLE_WIFI true              // WiFi aktivieren
 #define ENABLE_EMAIL_ALERTS true      // E-Mail Alarme aktivieren
 #define ENABLE_DO_SENSOR false        // Dissolved Oxygen Sensor
 #define ENABLE_SD_LOGGING true        // SD-Karte aktivieren
+#define ENABLE_TURBINE true           // Wasserturbine Flow & Power Monitoring (v1.6)
+#define ENABLE_BATTERY_MONITOR true   // Batterie-Überwachung (v1.6)
+#define ENABLE_TELEGRAM false         // Telegram Bot (v1.6.1)
+#define ENABLE_DYNDNS false           // DynDNS Auto-Update (v1.6.1)
 
 // Test-Modus (Fake-Sensordaten)
 #define TEST_MODE false               // true = Test-Werte, false = echte Sensoren

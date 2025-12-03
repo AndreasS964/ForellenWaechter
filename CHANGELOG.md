@@ -4,6 +4,152 @@ Alle Änderungen am ForellenWächter Projekt.
 
 ---
 
+## [1.6.1] - 2024-12-03
+
+### 📱 Remote Control Edition - Kostenloser Fernzugriff!
+
+**Telegram Bot & DynDNS Integration für weltweiten Zugriff**
+
+#### Hinzugefügt
+
+- **Telegram Bot Support (optional)**
+  - Komplett kostenlos, für immer!
+  - Push-Benachrichtigungen bei Alarmen
+  - Befehle: /status, /temp, /power, /alarm, /relay1-4
+  - Bidirektionale Steuerung (Relais schalten)
+  - UniversalTelegramBot Library Integration
+  - Feature-Toggle: `ENABLE_TELEGRAM`
+  - Dokumentation: `docs/TELEGRAM_SETUP.md`
+
+- **DynDNS Support (optional)**
+  - DuckDNS Integration (kostenlos)
+  - Auto-Update alle 5 Minuten
+  - Dashboard von überall: `http://forellenwaechter.duckdns.org`
+  - Feature-Toggle: `ENABLE_DYNDNS`
+  - Dokumentation: `docs/DYNDNS_SETUP.md`
+
+- **Setup-Dokumentation**
+  - Schritt-für-Schritt Telegram Bot Setup
+  - Schritt-für-Schritt DynDNS Setup
+  - Troubleshooting-Abschnitte
+  - Sicherheits-Hinweise
+
+- **Konfiguration**
+  - `TELEGRAM_BOT_TOKEN` - Bot Token von @BotFather
+  - `TELEGRAM_CHAT_ID` - Chat-ID von @userinfobot
+  - `DYNDNS_DOMAIN` - DuckDNS Subdomain
+  - `DYNDNS_TOKEN` - DuckDNS Token
+  - config.example.h mit allen neuen Parametern
+
+#### Geändert
+
+- Firmware-Version: 1.6.0 → 1.6.1
+- README.md: v1.6.1 Features + Telegram Badge
+- config.example.h: Telegram & DynDNS Sektion
+
+#### Hinweis
+
+- **Telegram Bot**: Funktioniert IMMER (auch hinter CG-NAT)
+- **DynDNS**: Braucht öffentliche IP-Adresse vom Provider
+- **Beide optional**: Können individuell aktiviert/deaktiviert werden
+- **Kostenlos**: Beide Features ohne monatliche Kosten nutzbar
+
+---
+
+## [1.6.0] - 2024-12-03
+
+### ⚡ Turbine & Power Edition - Autarke Stromversorgung!
+
+**Großes Energie-Update: Wasserkraft-Turbine & Batterie-Monitoring**
+
+#### Hinzugefügt
+
+- **Wasserturbinen-Integration**
+  - Mini Hydro-Generator Support (12V, 10W)
+  - Flow-Sensor: Hall-Sensor Impulsmessung via GPIO 2
+  - Interrupt-basierte Pulse-Zählung (IRAM_ATTR ISR)
+  - Durchfluss-Berechnung in L/min (Echtzeit)
+  - Kalibrierbar via `TURBINE_PULSES_PER_LITER`
+
+- **Power-Monitoring**
+  - Turbinen-Leistung in Watt
+  - Berechnung basierend auf Durchfluss
+  - API: `/api/sensors` erweitert um `turbinePower`, `flowRate`
+  - Serial Monitor Ausgabe: Flow + Power
+
+- **Batterie-Monitoring**
+  - Echtzeit Spannungsmessung (Pb/Gel-Batterien)
+  - Spannungsteiler Support (10kΩ + 3.3kΩ) auf GPIO 36
+  - Prozent-Anzeige (10.5V-13.8V Bereich)
+  - Low-Battery Warnung bei < 11.5V
+  - API: `batteryVoltage`, `batteryPercent`, `batteryLow`
+
+- **Alarm-Erweiterungen**
+  - Flow-Alarm: Warnung bei Durchfluss < 5.0 L/min
+  - Batterie-Alarm: Warnung bei niedriger Batterie
+  - Beide Alarme in `checkAlarms()` integriert
+
+- **Konfiguration**
+  - `ENABLE_TURBINE` - Feature-Toggle
+  - `ENABLE_BATTERY_MONITOR` - Feature-Toggle
+  - Turbinen-Parameter: Spannung, Max-Power, Min-Flow
+  - Batterie-Parameter: R1, R2, FULL, EMPTY, WARNING
+  - `WEATHER_UPDATE_INTERVAL` - 12h (2x täglich)
+
+- **Dokumentation**
+  - HARDWARE.md: Kompletter Abschnitt "NEU in v1.6"
+  - Schaltplan Stromversorgung v1.6
+  - Verdrahtungsanleitungen für Turbine + Laderegler
+  - Spannungsteiler-Berechnung
+  - Kalibrierungsanleitungen (Flow + Batterie)
+  - README.md: v1.6 Features und Badge
+  - config.example.h: Turbine & Batterie Konfiguration
+
+#### Geändert
+
+- **Pin-Belegung**
+  - GPIO 2: Flow-Sensor (Turbinen Hall-Sensor)
+  - GPIO 36: Batterie-Spannung (Spannungsteiler)
+  - GPIO 27: DO-Sensor (verschoben von GPIO 36)
+
+- **API**
+  - `handleAPISensors()`: JSON-Dokument auf 768 Bytes erweitert
+  - Turbinen- und Batterie-Daten in API integriert
+
+- **Test-Mode**
+  - `generateTestData()`: Turbine & Batterie Fake-Daten
+  - Sinuswellen für Flow (0.9-1.5 L/min) und Power (5-10W)
+  - Batterie-Simulation (12.0-13.0V, 60-90%)
+
+- **Serial Output**
+  - `printSensorValues()`: Flow, Power, Batterie angezeigt
+  - Formatierung mit Emojis (⚡🔋💧)
+
+#### Technische Details
+
+- **Stromversorgung v1.6:**
+  ```
+  Turbine (12V, 10W)
+    → LM2596 Laderegler (13.8V)
+    → Pb/Gel-Batterie (12V, 7-20Ah)
+    → Step-Down (5V)
+    → ESP32
+  ```
+
+- **Hardware-Kosten:**
+  - Turbine: ~15€
+  - Laderegler: ~8€
+  - Batterie: 20-50€
+  - **Gesamt: ca. 50€ für autarke Stromversorgung!**
+
+- **Energiebilanz:**
+  - Turbinen-Output: 10W
+  - ESP32 + Sensoren: ~1.5W
+  - Überschuss: 8.5W → lädt Batterie
+  - **Vollständig autark bei kontinuierlichem Durchfluss!**
+
+---
+
 ## [1.5.1] - 2024-12-01
 
 ### 🔧 GPIO-Korrektur

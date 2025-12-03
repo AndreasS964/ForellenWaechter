@@ -1,6 +1,6 @@
 # 🔌 Hardware-Dokumentation
 
-Vollständige Hardware-Anleitung für den ForellenWächter v1.5 LTE.
+Vollständige Hardware-Anleitung für den ForellenWächter v1.6 Turbine & Power Edition.
 
 ---
 
@@ -353,6 +353,168 @@ Batterie (+) ────[10kΩ]────┬────[3.3kΩ]──── 
 - Sensorkabel geschirmt verlegen (wenn möglich)
 - Relais-Leitungen von Sensorkabeln trennen
 - Ferritringe an Zuleitungen (optional)
+
+---
+
+## NEU in v1.6: Wasserturbine & Batterie-Monitoring
+
+### Zusätzliche Hardware für v1.6
+
+| Komponente | Spezifikation | Bezugsquelle | Preis (ca.) |
+|------------|---------------|--------------|-------------|
+| **Mini Wasserturbine** | 12V DC, 10W, mit Hall-Sensor | Amazon | ~15€ |
+| **Laderegler LM2596** | Step-Down mit Display, 4-40V → 1.25-37V | Amazon | ~8€ |
+| **Blei-Gel Batterie** | 12V, 7-20Ah | Elektronikfachhandel | 20-50€ |
+| **Spannungsteiler** | 10kΩ + 3.3kΩ Widerstände | Amazon/Reichelt | ~1€ |
+
+### Empfohlene Produkte
+
+**Wasserturbine:**
+- **"Wasserkraft Generator 12V DC 10W"** (Amazon)
+- Startdruck: 0.05 MPa
+- Durchfluss: ~90 L/h (1.5 L/min)
+- Hall-Sensor: Ja (Pulsmessung)
+- Anschlüsse: 1/2" Gewinde
+
+**Laderegler:**
+- **AZ-Delivery LM2596 Step-Down** oder ähnlich
+- Eingangsspannung: 4-40V
+- Ausgangsspannung: einstellbar (auf 13.8V einstellen!)
+- LED-Anzeige für Spannung
+
+### Schaltplan Stromversorgung v1.6
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         STROMVERSORGUNG v1.6                             │
+│                                                                           │
+│  Wasserdurchfluss                                                         │
+│       ↓                                                                   │
+│  ┌─────────────┐                                                         │
+│  │ Turbine     │                                                         │
+│  │  12V, 10W   │───┐                                                     │
+│  │ Hall-Sensor │   │ 12V DC                                              │
+│  └─────────────┘   │                                                     │
+│       │            │                                                     │
+│  (GPIO 2) ←────────┤                                                     │
+│  Flow Sensor       │                                                     │
+│                    ↓                                                     │
+│              ┌──────────────┐                                            │
+│              │  LM2596      │                                            │
+│              │  Laderegler  │                                            │
+│              │  In: 12V     │                                            │
+│              │  Out: 13.8V  │                                            │
+│              └──────────────┘                                            │
+│                    │                                                     │
+│                    ↓ 13.8V (Ladespannung)                                │
+│              ┌──────────────┐                                            │
+│              │  Pb/Gel Akku │                                            │
+│              │  12V, 7-20Ah │                                            │
+│              └──────────────┘                                            │
+│                    │                                                     │
+│                    ├─────────────┐ (Spannungsmessung)                    │
+│                    │             │                                       │
+│                    │        ┌────┴────┐                                  │
+│                    │        │  10kΩ   │                                  │
+│                    │        └────┬────┘                                  │
+│                    │             │                                       │
+│                    │        ┌────┴────┐                                  │
+│                    │        │  3.3kΩ  │──→ GPIO 36 (ADC, max 3.3V)      │
+│                    │        └────┬────┘                                  │
+│                    │             │                                       │
+│                    │            GND                                      │
+│                    │                                                     │
+│                    ↓ 12V                                                 │
+│              ┌──────────────┐                                            │
+│              │ Step-Down    │                                            │
+│              │ 12V → 5V     │                                            │
+│              │ (für ESP32)  │                                            │
+│              └──────────────┘                                            │
+│                    │ 5V                                                  │
+│                    ↓                                                     │
+│              ┌──────────────┐                                            │
+│              │  ESP32 VIN   │                                            │
+│              └──────────────┘                                            │
+│                                                                           │
+└───────────────────────────────────────────────────────────────────────────┘
+```
+
+### Verdrahtung Turbine & Batterie
+
+#### 1. Wasserturbine anschließen
+
+**Turbinen-Hauptanschlüsse:**
+```
+Rot (+)   →  LM2596 IN+
+Schwarz (-) →  LM2596 IN- & GND
+```
+
+**Hall-Sensor (Flow-Messung):**
+```
+Turbine Signal-Pin  →  GPIO 2 (mit 10kΩ Pullup nach 3.3V)
+Turbine GND         →  ESP32 GND
+```
+
+#### 2. Laderegler LM2596 konfigurieren
+
+1. **VOR dem Anschluss der Batterie:** Ausgangsspannung einstellen
+2. Multimeter an OUT+ und OUT- anschließen
+3. Poti drehen bis Display **13.8V** anzeigt (Ladespannung für Pb/Gel)
+4. Erst dann Batterie anschließen!
+
+#### 3. Spannungsteiler für Batterie-Monitoring
+
+**Schaltung:**
+```
+Batterie +12V ────┬──→ (zur Versorgung)
+                  │
+                 10kΩ  (R1)
+                  │
+                  ├────→ GPIO 36 (max 3.3V!)
+                  │
+                3.3kΩ  (R2)
+                  │
+                 GND
+```
+
+**Berechnung:**
+- V_out = V_in × R2 / (R1 + R2)
+- Bei 12.6V: V_out = 12.6 × 3.3 / 13.3 = 3.13V ✓ (sicher unter 3.3V!)
+- Bei 13.8V: V_out = 13.8 × 3.3 / 13.3 = 3.42V ⚠️ (knapp über 3.3V!)
+
+**Alternative für mehr Sicherheit:** 10kΩ + 2.2kΩ (max 3.0V bei 13.8V)
+
+### Erweiterte Pin-Tabelle v1.6
+
+| Pin | Funktion | v1.5 | v1.6 | Hinweis |
+|-----|----------|------|------|---------|
+| GPIO 2 | Flow Sensor | - | ✅ | Hall-Sensor Turbine, Interrupt |
+| GPIO 27 | DO Sensor | - | ✅ | DO-Sensor verschoben (war GPIO 36) |
+| GPIO 36 | ADC | DO | Battery | Batterie-Spannung (Spannungsteiler) |
+
+### Kalibrierung
+
+#### Flow-Sensor Kalibrierung
+
+1. **Durchfluss messen:** Mit externem Durchflussmesser 1 Minute lang messen
+2. **Impulse zählen:** Serial Monitor zeigt `turbinePulseCount` (nach 1 min notieren)
+3. **Faktor berechnen:**
+   ```
+   TURBINE_PULSES_PER_LITER = pulseCount / gemessene_Liter
+   ```
+4. In `config.h` eintragen und neu flashen
+
+**Beispiel:**
+- Gemessen: 1.5 Liter in 1 Minute
+- Impulse: 675
+- Faktor: 675 / 1.5 = **450 Impulse/Liter**
+
+#### Batterie-Kalibrierung
+
+1. **Batterie voll laden** (bis LM2596 auf 13.8V geht)
+2. **Spannung mit Multimeter messen** (z.B. 13.2V)
+3. **Serial Monitor prüfen:** Zeigt ESP32 die gleiche Spannung?
+4. Falls nicht: Widerstandswerte im Spannungsteiler nachmessen und in `config.h` korrigieren
 
 ---
 

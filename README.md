@@ -2,10 +2,12 @@
 
 **ESP32-basiertes IoT-Monitoring-System für Forellenzucht**
 
-![Version](https://img.shields.io/badge/Version-1.5-blue)
+![Version](https://img.shields.io/badge/Version-1.6.1-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Platform](https://img.shields.io/badge/Platform-ESP32-red)
 ![LTE](https://img.shields.io/badge/LTE-Remote-orange)
+![Power](https://img.shields.io/badge/Power-Hydro-cyan)
+![Telegram](https://img.shields.io/badge/Telegram-Bot-blue)
 ![Status](https://img.shields.io/badge/Status-Active-brightgreen)
 
 ---
@@ -15,10 +17,29 @@
 ForellenWächter ist ein umfassendes Monitoring-System für Forellenaufzuchtanlagen. Es wurde speziell für Standorte mit natürlicher Quellwasserversorgung entwickelt und ermöglicht zuverlässiges Monitoring - auch von entfernten Standorten aus.
 
 **Anwendung:** Forellenzucht-Monitoring
-**Stromversorgung:** Flexibel (Netz/Batterie/Wasserkraft) ⚡💧
+**Stromversorgung:** Autark mit Wasserkraft-Turbine ⚡💧
+**Fernzugriff:** Telegram Bot + DynDNS 📱🌐 **NEU in v1.6.1!**
 
-### ✨ Features v1.5
+### ✨ Features v1.6.1 - Remote Control Edition
 
+**🆕 NEU in v1.6.1:**
+| Feature | Beschreibung |
+|---------|--------------|
+| 📱 **Telegram Bot** | Fernsteuerung & Push-Alarme (optional, kostenlos) |
+| 🌐 **DynDNS Support** | Dashboard von überall via DuckDNS (optional) |
+| 📚 **Setup-Guides** | Detaillierte Anleitungen für Telegram & DynDNS |
+
+**Features aus v1.6:**
+| Feature | Beschreibung |
+|---------|--------------|
+| ⚡ **Wasserturbine** | 10W Mini-Hydro-Generator für autarke Stromversorgung |
+| 💧 **Durchfluss-Monitoring** | L/min via Hall-Sensor (Echtzeit) |
+| 🔋 **Batterie-Monitoring** | Spannung, % und Low-Battery Warnung (Pb/Gel) |
+| 📊 **Power-Monitoring** | Turbinen-Leistung in Watt |
+| 🌦️ **Verbessertes Wetter** | 2x täglich Update mit Stundenvorhersage |
+| ⚠️ **Flow-Alarm** | Warnung bei zu geringem Durchfluss |
+
+**Features aus v1.5:**
 | Feature | Beschreibung |
 |---------|--------------|
 | 📡 **LTE/4G Remote** | Zugriff von überall über Mobilfunk |
@@ -30,11 +51,11 @@ ForellenWächter ist ein umfassendes Monitoring-System für Forellenaufzuchtanla
 | 📊 **Live Dashboard** | Modernes Glassmorphism-Design |
 | 📈 **Charts** | 24h/7d Verlaufsdiagramme (Temp, pH, O₂, TDS) |
 | 💾 **SD-Logging** | CSV-Export für Langzeitanalyse |
-| 🎛️ **3-Modi Relays** | Auto/An/Aus für alle 4 Relais ✨ NEU |
+| 🎛️ **3-Modi Relays** | Auto/An/Aus für alle 4 Relais |
 | 🔄 **REST API** | Für externe Integrationen |
-| ⚙️ **Settings-Seite** | Kalibrierung, Fischarten, Wetter ✨ NEU |
-| 🐟 **Fischarten-Presets** | Forelle, Karpfen, Tilapia, Custom ✨ NEU |
-| 🌤️ **Wetter-Widget** | 24h Vorhersage nach PLZ ✨ NEU |
+| ⚙️ **Settings-Seite** | Kalibrierung, Fischarten, Wetter |
+| 🐟 **Fischarten-Presets** | Forelle, Karpfen, Tilapia, Custom |
+| 🌤️ **Wetter-Widget** | 24h Vorhersage nach PLZ |
 | 🎯 **Kalibrierung** | 2-Punkt pH & TDS Kalibrierung |
 | 🔄 **OTA Updates** | Drahtlose Firmware-Updates |
 
@@ -44,6 +65,8 @@ ForellenWächter ist ein umfassendes Monitoring-System für Forellenaufzuchtanla
 
 | Version | Anwendung | Features |
 |---------|-----------|----------|
+| **v1.6.1 Remote** | Wasserkraft + Fernzugriff | 📱 Telegram Bot + 🌐 DynDNS (kostenlos!) |
+| **v1.6 Turbine** | Wasserkraft + Remote | ⚡ Turbine, Flow & Power Monitor, Batterie-Status |
 | **v1.5 LTE** | Netzbetrieb + Remote | Settings-Seite, Fischarten-Presets, 3-Modi Relays, Wetter |
 | **v1.4 LTE** | Netzbetrieb + Remote | LTE, E-Mail, DO-Sensor, OTA, Kalibrierung |
 | **v1.2 Full** | Netzbetrieb | Web-Dashboard, Charts, WebSocket |
@@ -53,6 +76,10 @@ ForellenWächter ist ein umfassendes Monitoring-System für Forellenaufzuchtanla
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
+│                                                             │
+│  Hast du Wasser-Durchfluss?                                 │
+│                                                             │
+│  JA → v1.6 Turbine Edition (AUTARK!)     ⚡💧              │
 │                                                             │
 │  Hast du Strom vor Ort?                                     │
 │                                                             │
