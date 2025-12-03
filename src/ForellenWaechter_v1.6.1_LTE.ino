@@ -68,6 +68,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════════
 
 // --- Betriebsmodus ---
+#define FIRMWARE_VERSION "1.6.1"     // Firmware-Version
 #define TEST_MODE false              // Fake-Werte für Tests
 #define DEBUG_MODE true              // Serial-Ausgabe
 #define WATCHDOG_TIMEOUT 120         // Sekunden
@@ -260,7 +261,7 @@ struct SystemStatus {
   unsigned long lastEmailSent = 0;
   int alarmCount = 0;
   int dailyAlarms = 0;
-  String firmwareVersion = "1.6.0";
+  String firmwareVersion = FIRMWARE_VERSION;
 } sysStatus;
 
 // Kalibrierungsdaten (2-Punkt Kalibrierung)
@@ -365,6 +366,24 @@ void setup() {
   initWebServer();
   esp_task_wdt_reset();  // Watchdog zurücksetzen nach WebServer-Init
 
+  // Telegram Bot initialisieren (v1.6.1)
+  #if ENABLE_TELEGRAM
+  if (ENABLE_WIFI || ENABLE_LTE) {
+    telegramClient.setInsecure();  // Für ESP32 (keine Zertifikatsprüfung)
+    bot = new UniversalTelegramBot(TELEGRAM_BOT_TOKEN, telegramClient);
+    Serial.println("✅ Telegram Bot initialisiert");
+    esp_task_wdt_reset();
+  }
+  #endif
+
+  // DynDNS initialer Update (v1.6.1)
+  #if ENABLE_DYNDNS
+  if (ENABLE_WIFI || ENABLE_LTE) {
+    updateDynDNS();
+    esp_task_wdt_reset();
+  }
+  #endif
+
   // Erste Messung
   readAllSensors();
   esp_task_wdt_reset();  // Watchdog zurücksetzen nach Sensor-Read
@@ -372,7 +391,7 @@ void setup() {
   // NTP-Sync wird später in loop() durchgeführt (nicht in setup(), um Watchdog zu vermeiden)
   lastNTPSync = millis() - NTP_SYNC_INTERVAL + 30000; // Erstes Sync nach 30 Sekunden
 
-  Serial.println("\n✅ ForellenWächter v1.5 bereit!");
+  Serial.println("\n✅ ForellenWächter v" + String(FIRMWARE_VERSION) + " bereit!");
   Serial.println("══════════════════════════════════════════════\n");
   
   // Startup-Benachrichtigung
@@ -1430,6 +1449,24 @@ void loop() {
     esp_task_wdt_reset();
   }
 
+  // Telegram Bot (v1.6.1)
+  #if ENABLE_TELEGRAM
+  if (now - lastTelegramCheck >= TELEGRAM_CHECK_INTERVAL) {
+    handleTelegramMessages();
+    lastTelegramCheck = now;
+    esp_task_wdt_reset();
+  }
+  #endif
+
+  // DynDNS Update (v1.6.1)
+  #if ENABLE_DYNDNS
+  if (now - lastDynDNSUpdate >= DYNDNS_UPDATE_INTERVAL) {
+    updateDynDNS();
+    lastDynDNSUpdate = now;
+    esp_task_wdt_reset();
+  }
+  #endif
+
   // Tägliche Zähler zurücksetzen (um Mitternacht)
   static int lastDay = -1;
   struct tm timeinfo;
@@ -1451,10 +1488,7 @@ void loop() {
     }
     lastMemCheck = now;
   }
-  
-  // Webserver
-  server.handleClient();
-  
+
   // Status LED
   updateStatusLED();
 }
@@ -1802,6 +1836,157 @@ void handleCSS() {
 void handleJS() {
   server.send(200, "application/javascript", getJS());
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════════
+// TELEGRAM BOT FUNCTIONS (v1.6.1)
+// ═══════════════════════════════════════════════════════════════════════════════════
+
+#if ENABLE_TELEGRAM
+void handleTelegramMessages() {
+  if (!bot) return;
+
+  int numNewMessages = bot->getUpdates(bot->last_message_received + 1);
+
+  for (int i = 0; i < numNewMessages; i++) {
+    String chat_id = String(bot->messages[i].chat_id);
+    String text = bot->messages[i].text;
+
+    // Nur auf konfigurierte Chat-ID reagieren
+    if (chat_id != String(TELEGRAM_CHAT_ID)) {
+      bot->sendMessage(chat_id, "⛔ Nicht autorisiert!", "");
+      continue;
+    }
+
+    // Befehle verarbeiten
+    if (text == "/start") {
+      String welcome = "🐟 ForellenWächter Bot aktiv!\n\n";
+      welcome += "Verfügbare Befehle:\n";
+      welcome += "/status - Alle Sensordaten\n";
+      welcome += "/temp - Temperaturen\n";
+      welcome += "/water - Wasserqualität\n";
+      welcome += "/power - Turbine & Batterie\n";
+      welcome += "/alarm - Alarm-Status\n";
+      welcome += "/relay1-4 - Relais schalten";
+      bot->sendMessage(chat_id, welcome, "");
+    }
+    else if (text == "/status") {
+      String msg = "📊 *ForellenWächter Status*\n\n";
+      msg += "💧 Wasser: " + String(sensors.waterTemp, 1) + "°C\n";
+      msg += "🌡️ Luft: " + String(sensors.airTemp, 1) + "°C\n";
+      msg += "🧪 pH: " + String(sensors.ph, 2) + "\n";
+      msg += "📊 TDS: " + String(sensors.tds, 0) + " ppm\n";
+      if (ENABLE_DO_SENSOR) {
+        msg += "🫧 O₂: " + String(sensors.dissolvedOxygen, 1) + " mg/L\n";
+      }
+      if (ENABLE_TURBINE) {
+        msg += "⚡ Flow: " + String(sensors.flowRate, 1) + " L/min\n";
+        msg += "🔌 Power: " + String(sensors.turbinePower, 1) + " W\n";
+      }
+      if (ENABLE_BATTERY_MONITOR) {
+        msg += "🔋 Batterie: " + String(sensors.batteryVoltage, 2) + "V (" + String(sensors.batteryPercent, 0) + "%)\n";
+      }
+      msg += "🌊 Level: " + String(sensors.waterLevelOK ? "OK" : "NIEDRIG") + "\n";
+      msg += "🚨 Alarm: " + String(sensors.alarmActive ? "AKTIV" : "Kein Alarm");
+      bot->sendMessage(chat_id, msg, "Markdown");
+    }
+    else if (text == "/temp") {
+      String msg = "🌡️ *Temperaturen*\n\n";
+      msg += "💧 Wasser: " + String(sensors.waterTemp, 1) + "°C\n";
+      msg += "🌡️ Luft: " + String(sensors.airTemp, 1) + "°C";
+      bot->sendMessage(chat_id, msg, "Markdown");
+    }
+    else if (text == "/water") {
+      String msg = "💧 *Wasserqualität*\n\n";
+      msg += "🧪 pH: " + String(sensors.ph, 2) + "\n";
+      msg += "📊 TDS: " + String(sensors.tds, 0) + " ppm\n";
+      if (ENABLE_DO_SENSOR) {
+        msg += "🫧 O₂: " + String(sensors.dissolvedOxygen, 1) + " mg/L";
+      }
+      bot->sendMessage(chat_id, msg, "Markdown");
+    }
+    else if (text == "/power") {
+      String msg = "⚡ *Turbine & Batterie*\n\n";
+      if (ENABLE_TURBINE) {
+        msg += "💧 Durchfluss: " + String(sensors.flowRate, 1) + " L/min\n";
+        msg += "🔌 Leistung: " + String(sensors.turbinePower, 1) + " W\n";
+      }
+      if (ENABLE_BATTERY_MONITOR) {
+        msg += "🔋 Spannung: " + String(sensors.batteryVoltage, 2) + " V\n";
+        msg += "📊 Ladung: " + String(sensors.batteryPercent, 0) + " %\n";
+        msg += "⚠️ Status: " + String(sensors.batteryLow ? "NIEDRIG" : "OK");
+      }
+      bot->sendMessage(chat_id, msg, "Markdown");
+    }
+    else if (text == "/alarm") {
+      String msg = "🚨 *Alarm-Status*\n\n";
+      if (sensors.alarmActive) {
+        msg += "Status: AKTIV\n";
+        msg += "Grund: " + sensors.alarmReason;
+      } else {
+        msg += "Status: Kein Alarm";
+      }
+      bot->sendMessage(chat_id, msg, "Markdown");
+    }
+    else if (text.startsWith("/relay")) {
+      int relayNum = text.substring(6).toInt() - 1;
+      if (relayNum >= 0 && relayNum < 4) {
+        relayStates[relayNum] = !relayStates[relayNum];
+        updateRelays();
+        bot->sendMessage(chat_id, "Relais " + String(relayNum + 1) + ": " + (relayStates[relayNum] ? "AN" : "AUS"), "");
+      }
+    }
+    else {
+      bot->sendMessage(chat_id, "❓ Unbekannter Befehl. Sende /start für Hilfe.", "");
+    }
+  }
+}
+
+void sendTelegramAlarm(String reason) {
+  if (!bot || !ENABLE_TELEGRAM) return;
+
+  String msg = "🚨 *ALARM!*\n\n";
+  msg += reason + "\n\n";
+  msg += "💧 Wasser: " + String(sensors.waterTemp, 1) + "°C\n";
+  msg += "🧪 pH: " + String(sensors.ph, 2);
+
+  bot->sendMessage(TELEGRAM_CHAT_ID, msg, "Markdown");
+}
+#endif
+
+// ═══════════════════════════════════════════════════════════════════════════════════
+// DYNDNS UPDATE FUNCTION (v1.6.1)
+// ═══════════════════════════════════════════════════════════════════════════════════
+
+#if ENABLE_DYNDNS
+void updateDynDNS() {
+  if (!WiFi.isConnected() && !sysStatus.lteConnected) {
+    Serial.println("⚠️  DynDNS: Keine Internetverbindung");
+    return;
+  }
+
+  HTTPClient http;
+  String url = "https://www.duckdns.org/update?domains=" + String(DYNDNS_DOMAIN).substring(0, String(DYNDNS_DOMAIN).indexOf('.'));
+  url += "&token=" + String(DYNDNS_TOKEN);
+  url += "&ip=";  // IP wird automatisch erkannt
+
+  http.begin(url);
+  int httpCode = http.GET();
+
+  if (httpCode == 200) {
+    String response = http.getString();
+    if (response == "OK") {
+      Serial.println("✅ DynDNS Update erfolgreich");
+      Serial.println("🌐 Domain: " + String(DYNDNS_DOMAIN));
+    } else {
+      Serial.println("❌ DynDNS Update fehlgeschlagen: " + response);
+    }
+  } else {
+    Serial.printf("❌ DynDNS HTTP Error: %d\n", httpCode);
+  }
+
+  http.end();
+}
+#endif
 
 // HTML, CSS, JS werden in separater Datei definiert (zu lang für hier)
 void handleRoot() {
