@@ -1581,17 +1581,19 @@ void handleAPIHistory() {
     if (i > 0) json += ",";
     json += String(history.tds[idx], 0);
   }
-  
+  json += "]";  // TDS-Array schließen
+
   if (ENABLE_DO_SENSOR) {
-    json += "],\"do\":[";
+    json += ",\"do\":[";  // DO-Array nur wenn enabled
     for (int i = 0; i < count; i += 3) {
       int idx = (start + i) % HISTORY_SIZE;
       if (i > 0) json += ",";
       json += String(history.dissolvedOxygen[idx], 1);
     }
+    json += "]";  // DO-Array schließen
   }
-  
-  json += "]}";
+
+  json += "}";
   
   server.send(200, "application/json", json);
 }
