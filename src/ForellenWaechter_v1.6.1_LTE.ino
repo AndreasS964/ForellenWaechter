@@ -648,40 +648,44 @@ void saveCalibration() {
 
 void initLTE() {
   Serial.println("📡 LTE wird initialisiert...");
-  
+
   LTESerial.begin(115200, SERIAL_8N1, LTE_RX, LTE_TX);
   delay(1000);
-  
+
   // Modul aufwecken (falls nötig)
   sendATCommand("AT", 1000);
-  
+
   // Echo aus
   sendATCommand("ATE0", 500);
-  
+
   // Modul-Info
   String moduleInfo = sendATCommand("ATI", 1000);
   Serial.printf("   Modul: %s\n", moduleInfo.c_str());
-  
+  esp_task_wdt_reset();
+
   // SIM-Status prüfen
   String simStatus = sendATCommand("AT+CPIN?", 1000);
   if (simStatus.indexOf("READY") == -1) {
     Serial.println("⚠️  SIM-Karte nicht bereit!");
     return;
   }
-  
+
   // Netzwerk-Registrierung
   sendATCommand("AT+CREG=1", 500);
   delay(2000);
-  
+  esp_task_wdt_reset();
+
   // APN konfigurieren
   String apnCmd = "AT+CGDCONT=1,\"IP\",\"" + String(LTE_APN) + "\"";
   sendATCommand(apnCmd.c_str(), 1000);
-  
-  // PDP Context aktivieren
+
+  // PDP Context aktivieren (kann lange dauern)
   sendATCommand("AT+CGACT=1,1", 5000);
-  
+  esp_task_wdt_reset();
+
   // Verbindung prüfen
   checkLTEConnection();
+  esp_task_wdt_reset();
   
   if (sysStatus.lteConnected) {
     Serial.println("✅ LTE verbunden!");
@@ -694,18 +698,26 @@ void initLTE() {
 
 String sendATCommand(const char* cmd, int timeout) {
   LTESerial.println(cmd);
-  
+
   String response = "";
   unsigned long start = millis();
-  
+  unsigned long lastWdtReset = millis();
+
   while (millis() - start < timeout) {
     while (LTESerial.available()) {
       char c = LTESerial.read();
       response += c;
     }
+
+    // Watchdog Reset alle 5 Sekunden in dieser Loop
+    if (millis() - lastWdtReset >= 5000) {
+      esp_task_wdt_reset();
+      lastWdtReset = millis();
+    }
+
     delay(10);
   }
-  
+
   response.trim();
   
   if (DEBUG_MODE && strlen(cmd) > 0) {
@@ -770,31 +782,34 @@ bool sendHTTPRequest(const char* url, const char* payload) {
   // LTE HTTP Request über AT-Befehle (SIM7600)
   if (sysStatus.lteConnected) {
     if (DEBUG_MODE) Serial.println("📡 LTE HTTP Request...");
-    
+
     // HTTP Service starten
     sendATCommand("AT+HTTPINIT", 2000);
+    esp_task_wdt_reset();
     delay(100);
-    
+
     // URL setzen
     String urlCmd = "AT+HTTPPARA=\"URL\",\"" + String(url) + "\"";
     sendATCommand(urlCmd.c_str(), 1000);
-    
+
     // Content-Type setzen
     sendATCommand("AT+HTTPPARA=\"CONTENT\",\"application/json\"", 500);
-    
+
     // Datenlänge angeben und Daten senden
     String dataCmd = "AT+HTTPDATA=" + String(strlen(payload)) + ",10000";
     String dataResponse = sendATCommand(dataCmd.c_str(), 2000);
-    
+    esp_task_wdt_reset();
+
     // Warten auf DOWNLOAD prompt
     if (dataResponse.indexOf("DOWNLOAD") != -1) {
       LTESerial.print(payload);
       delay(1000);
     }
-    
-    // POST Request ausführen (1 = POST)
+
+    // POST Request ausführen (1 = POST) - Kann bis zu 15 Sekunden dauern!
     String result = sendATCommand("AT+HTTPACTION=1", 15000);
-    
+    esp_task_wdt_reset();  // KRITISCH nach 15s Operation!
+
     // HTTP Service beenden
     sendATCommand("AT+HTTPTERM", 1000);
     
@@ -1358,10 +1373,11 @@ void syncTime() {
 
 String getTimestamp() {
   struct tm timeinfo;
-  if (!getLocalTime(&timeinfo)) {
+  // WICHTIG: Timeout angeben! Ohne Timeout kann getLocalTime() unendlich blockieren
+  if (!getLocalTime(&timeinfo, 1000)) {
     return String(millis() / 1000);
   }
-  
+
   char buffer[25];
   strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &timeinfo);
   return String(buffer);
@@ -1369,10 +1385,11 @@ String getTimestamp() {
 
 String getDateString() {
   struct tm timeinfo;
-  if (!getLocalTime(&timeinfo)) {
+  // WICHTIG: Timeout angeben! Ohne Timeout kann getLocalTime() unendlich blockieren
+  if (!getLocalTime(&timeinfo, 1000)) {
     return "nodate";
   }
-  
+
   char buffer[12];
   strftime(buffer, sizeof(buffer), "%Y-%m-%d", &timeinfo);
   return String(buffer);
@@ -1863,9 +1880,13 @@ void handleJS() {
 void handleTelegramMessages() {
   if (!bot) return;
 
+  // getUpdates() kann blockieren - WDT reset davor
+  esp_task_wdt_reset();
   int numNewMessages = bot->getUpdates(bot->last_message_received + 1);
 
   for (int i = 0; i < numNewMessages; i++) {
+    // WDT reset bei jeder Nachricht (falls viele Nachrichten)
+    esp_task_wdt_reset();
     String chat_id = String(bot->messages[i].chat_id);
     String text = bot->messages[i].text;
 
@@ -1988,7 +2009,10 @@ void updateDynDNS() {
   url += "&ip=";  // IP wird automatisch erkannt
 
   http.begin(url);
+  http.setTimeout(10000);  // 10 Sekunden Timeout
+  esp_task_wdt_reset();    // WDT reset vor GET
   int httpCode = http.GET();
+  esp_task_wdt_reset();    // WDT reset nach GET
 
   if (httpCode == 200) {
     String response = http.getString();
