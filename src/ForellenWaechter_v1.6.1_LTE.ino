@@ -2050,7 +2050,7 @@ String getHTML() {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ForellenWächter v1.5</title>
+  <title>ForellenWächter v1.6.1</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐟</text></svg>">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
@@ -2530,6 +2530,27 @@ String getHTML() {
         <div class="label">Wasserlevel</div>
         <div class="range">Float Switch</div>
       </div>
+
+      <div class="card" id="cardFlow">
+        <div class="icon">⚡</div>
+        <div class="value"><span id="flowRate">--</span><span class="unit">L/min</span></div>
+        <div class="label">Durchfluss</div>
+        <div class="range">Turbine</div>
+      </div>
+
+      <div class="card" id="cardPower">
+        <div class="icon">🔌</div>
+        <div class="value"><span id="turbinePower">--</span><span class="unit">W</span></div>
+        <div class="label">Leistung</div>
+        <div class="range">Turbine</div>
+      </div>
+
+      <div class="card" id="cardBattery">
+        <div class="icon">🔋</div>
+        <div class="value"><span id="batteryVoltage">--</span><span class="unit">V</span></div>
+        <div class="label">Batterie</div>
+        <div class="range" id="batteryPercent">-- %</div>
+      </div>
     </div>
     
     <div class="charts-section">
@@ -2773,13 +2794,32 @@ String getHTML() {
       document.getElementById('tdsValue').textContent = Math.round(data.tds);
       document.getElementById('doValue').textContent = data.dissolvedOxygen.toFixed(1);
       document.getElementById('waterLevel').textContent = data.waterLevel ? 'OK' : 'NIEDRIG';
-      
+
+      // Turbine & Batterie (v1.6)
+      if (data.flowRate !== undefined) {
+        document.getElementById('flowRate').textContent = data.flowRate.toFixed(1);
+        document.getElementById('turbinePower').textContent = data.turbinePower.toFixed(1);
+      }
+      if (data.batteryVoltage !== undefined) {
+        document.getElementById('batteryVoltage').textContent = data.batteryVoltage.toFixed(2);
+        document.getElementById('batteryPercent').textContent = Math.round(data.batteryPercent) + ' %';
+      }
+
       // Karten-Status
       updateCardStatus('cardWater', data.waterTemp, 8, 14, 16);
       updateCardStatus('cardPH', data.ph, 6.5, 8.5);
       updateCardStatus('cardTDS', data.tds, 0, 500);
       updateCardStatus('cardDO', data.dissolvedOxygen, 6, 999);
-      
+
+      // Turbine/Batterie Status
+      if (data.flowRate !== undefined) {
+        updateCardStatus('cardFlow', data.flowRate, 5, 999);  // Min 5 L/min
+        document.getElementById('cardPower').className = 'card ok';
+      }
+      if (data.batteryVoltage !== undefined) {
+        updateCardStatus('cardBattery', data.batteryVoltage, 11.5, 13.8);
+      }
+
       document.getElementById('cardLevel').className = 'card ' + (data.waterLevel ? 'ok' : 'danger');
       
       // Alarm Banner
@@ -3138,6 +3178,7 @@ String getSettingsHTML() {
       <button class="tab active" onclick="showTab('calibration')">Kalibrierung</button>
       <button class="tab" onclick="showTab('fish')">Fischarten</button>
       <button class="tab" onclick="showTab('weather')">Wetter</button>
+      <button class="tab" onclick="showTab('remote')">Remote</button>
     </div>
 
     <!-- Kalibrierung Tab -->
@@ -3244,6 +3285,69 @@ String getSettingsHTML() {
         <div id="weatherInfo" style="margin-top:20px; display:none;">
           <h3>Aktuelles Wetter:</h3>
           <p id="weatherData"></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Remote Tab (v1.6.1) -->
+    <div id="remote" class="tab-content">
+      <div class="card">
+        <h2>📱 Telegram Bot</h2>
+        <div class="info">
+          💡 Erhalte Push-Benachrichtigungen bei Alarmen und steuere den ForellenWächter per Telegram.
+          <br><br>
+          <strong>Setup:</strong>
+          <ol style="margin-left: 20px; margin-top: 10px;">
+            <li>Erstelle einen Bot via @BotFather auf Telegram</li>
+            <li>Kopiere den Bot-Token und Chat-ID</li>
+            <li>Trage diese in config.h ein: TELEGRAM_BOT_TOKEN & TELEGRAM_CHAT_ID</li>
+            <li>Setze ENABLE_TELEGRAM auf true</li>
+            <li>Flashe die Firmware neu</li>
+          </ol>
+          <br>
+          <strong>Befehle:</strong>
+          <ul style="margin-left: 20px;">
+            <li>/start - Bot aktivieren</li>
+            <li>/status - Alle Sensordaten anzeigen</li>
+            <li>/temp - Temperaturen</li>
+            <li>/water - Wasserqualität</li>
+            <li>/power - Turbine & Batterie</li>
+            <li>/alarm - Alarm-Status</li>
+            <li>/relay1-4 - Relais schalten</li>
+          </ul>
+        </div>
+        <div class="form-group" style="margin-top: 20px;">
+          <label>Status</label>
+          <div style="padding: 12px; background: rgba(255,255,255,0.1); border-radius: 8px;">
+            Telegram: <span id="telegramStatus" style="color: #f59e0b;">Deaktiviert in config.h</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>🌐 DynDNS (DuckDNS)</h2>
+        <div class="info">
+          💡 Greife von überall auf das Dashboard zu - auch mit dynamischer IP & hinter CG-NAT.
+          <br><br>
+          <strong>Setup:</strong>
+          <ol style="margin-left: 20px; margin-top: 10px;">
+            <li>Registriere eine Domain auf <a href="https://www.duckdns.org" target="_blank" style="color: #0ea5e9;">duckdns.org</a></li>
+            <li>Kopiere deinen Token</li>
+            <li>Trage Domain & Token in config.h ein</li>
+            <li>Setze ENABLE_DYNDNS auf true</li>
+            <li>Flashe die Firmware neu</li>
+            <li>Richte Port-Forwarding ein (Port 80 → ESP32)</li>
+          </ol>
+          <br>
+          <strong>Hinweis:</strong> Bei CG-NAT (z.B. Mobilfunk) ist kein Port-Forwarding möglich.
+        </div>
+        <div class="form-group" style="margin-top: 20px;">
+          <label>Status</label>
+          <div style="padding: 12px; background: rgba(255,255,255,0.1); border-radius: 8px;">
+            DynDNS: <span id="dyndnsStatus" style="color: #f59e0b;">Deaktiviert in config.h</span>
+            <br>
+            Domain: <span id="dyndnsDomain">--</span>
+          </div>
         </div>
       </div>
     </div>
