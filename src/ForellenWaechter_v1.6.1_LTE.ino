@@ -312,6 +312,8 @@ struct HistoryBuffer {
   float ph[HISTORY_SIZE];
   float tds[HISTORY_SIZE];
   float dissolvedOxygen[HISTORY_SIZE];
+  float flowRate[HISTORY_SIZE];      // v1.6 Turbine
+  float turbinePower[HISTORY_SIZE];  // v1.6 Turbine
   unsigned long timestamp[HISTORY_SIZE];
   int index = 0;
   bool full = false;
@@ -419,7 +421,7 @@ void setup() {
 void printBanner() {
   Serial.println("\n");
   Serial.println("╔══════════════════════════════════════════════════════╗");
-  Serial.println("║   🐟 ForellenWächter v1.5 - LTE Remote Edition       ║");
+  Serial.println("║   🐟 ForellenWächter v1.6.2 - Stable Edition         ║");
   Serial.println("║   IoT Monitoring System für Aquakultur              ║");
   Serial.println("╚══════════════════════════════════════════════════════╝\n");
   
@@ -1302,8 +1304,10 @@ void updateHistory() {
   history.ph[history.index] = sensors.ph;
   history.tds[history.index] = sensors.tds;
   history.dissolvedOxygen[history.index] = sensors.dissolvedOxygen;
+  history.flowRate[history.index] = sensors.flowRate;           // v1.6
+  history.turbinePower[history.index] = sensors.turbinePower;   // v1.6
   history.timestamp[history.index] = millis();
-  
+
   history.index = (history.index + 1) % HISTORY_SIZE;
   if (history.index == 0) {
     history.full = true;
@@ -1671,8 +1675,30 @@ void handleAPIHistory() {
     json += "]";  // DO-Array schließen
   }
 
+  // Flow Rate Array (v1.6)
+  if (ENABLE_TURBINE) {
+    json += ",\"flowRate\":[";
+    for (int i = 0; i < count; i += 3) {
+      int idx = (start + i) % HISTORY_SIZE;
+      if (i > 0) json += ",";
+      json += String(history.flowRate[idx], 1);
+    }
+    json += "]";
+  }
+
+  // Turbine Power Array (v1.6)
+  if (ENABLE_TURBINE) {
+    json += ",\"turbinePower\":[";
+    for (int i = 0; i < count; i += 3) {
+      int idx = (start + i) % HISTORY_SIZE;
+      if (i > 0) json += ",";
+      json += String(history.turbinePower[idx], 1);
+    }
+    json += "]";
+  }
+
   json += "}";
-  
+
   server.send(200, "application/json", json);
 }
 
@@ -2240,16 +2266,21 @@ String getHTML() {
     .card .value {
       font-size: 2.5em;
       font-weight: 700;
+    }
+
+    .card .value > span:not(.unit) {
       background: linear-gradient(135deg, #fff, rgba(255,255,255,0.8));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
     }
-    
+
     .card .unit {
       font-size: 0.8em;
       opacity: 0.7;
       font-weight: 300;
+      color: rgba(255,255,255,0.9);
+      margin-left: 0.2em;
     }
     
     .card .label {
@@ -2560,6 +2591,13 @@ String getHTML() {
         <div class="label">Batterie</div>
         <div class="range" id="batteryPercent">-- %</div>
       </div>
+
+      <div class="card" id="cardUptime">
+        <div class="icon">⏱️</div>
+        <div class="value" id="uptimeValue" style="font-size: 1.8em;">--</div>
+        <div class="label">Uptime</div>
+        <div class="range" id="uptimeConnection">--</div>
+      </div>
     </div>
     
     <div class="charts-section">
@@ -2588,6 +2626,19 @@ String getHTML() {
           <canvas id="qualityChart"></canvas>
         </div>
       </div>
+
+      <div class="chart-card">
+        <h3>
+          ⚡ Turbine & Power
+          <div class="chart-tabs">
+            <button class="chart-tab active" onclick="setRange('power', 24)">24h</button>
+            <button class="chart-tab" onclick="setRange('power', 168)">7d</button>
+          </div>
+        </h3>
+        <div class="chart-container">
+          <canvas id="powerChart"></canvas>
+        </div>
+      </div>
     </div>
     
     <div class="system-grid">
@@ -2599,7 +2650,7 @@ String getHTML() {
         </div>
         <div class="info-row">
           <span class="info-label">LTE Signal</span>
-          <span class="info-value" id="lteSignal">--/31</span>
+          <span class="info-value" id="lteSignal">-- CSQ</span>
         </div>
         <div class="info-row">
           <span class="info-label">Operator</span>
@@ -2610,12 +2661,12 @@ String getHTML() {
           <span class="info-value" id="publicIP">--</span>
         </div>
       </div>
-      
+
       <div class="info-card">
         <h3>⚙️ System</h3>
         <div class="info-row">
           <span class="info-label">Firmware</span>
-          <span class="info-value" id="firmware">v1.5.0</span>
+          <span class="info-value" id="firmware">v1.6.2</span>
         </div>
         <div class="info-row">
           <span class="info-label">Free Heap</span>
@@ -2627,7 +2678,7 @@ String getHTML() {
         </div>
         <div class="info-row">
           <span class="info-label">Alarme heute</span>
-          <span class="info-value" id="dailyAlarms">0</span>
+          <span class="info-value" id="dailyAlarms">0 x</span>
         </div>
       </div>
       
@@ -2671,14 +2722,14 @@ String getHTML() {
     </div>
 
     <footer>
-      ForellenWächter v1.5 LTE Edition •
+      ForellenWächter v1.6.2 Stable Edition •
       <a href="/api/sensors">API</a> •
       © 2024 Andreas Sika
     </footer>
   </div>
   
   <script>
-    let tempChart, qualityChart;
+    let tempChart, qualityChart, powerChart;
     let relayModes = [2, 2, 2, 0];  // 0=Auto, 1=An, 2=Aus
     
     // Charts initialisieren
@@ -2766,8 +2817,40 @@ String getHTML() {
           }
         }
       });
+
+      powerChart = new Chart(document.getElementById('powerChart'), {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'Durchfluss (L/min)',
+            data: [],
+            borderColor: '#0ea5e9',
+            backgroundColor: 'rgba(14,165,233,0.1)',
+            yAxisID: 'y',
+            tension: 0.4,
+            borderWidth: 2
+          }, {
+            label: 'Leistung (W)',
+            data: [],
+            borderColor: '#f59e0b',
+            backgroundColor: 'rgba(245,158,11,0.1)',
+            yAxisID: 'y1',
+            tension: 0.4,
+            borderWidth: 2
+          }]
+        },
+        options: {
+          ...defaultOptions,
+          scales: {
+            ...defaultOptions.scales,
+            y: { ...defaultOptions.scales.y, position: 'left', min: 0, title: { display: true, text: 'Durchfluss (L/min)', color: 'rgba(255,255,255,0.6)' } },
+            y1: { ...defaultOptions.scales.y, position: 'right', min: 0, grid: { display: false }, title: { display: true, text: 'Leistung (W)', color: 'rgba(255,255,255,0.6)' } }
+          }
+        }
+      });
     }
-    
+
     // Daten abrufen
     async function fetchSensors() {
       try {
@@ -2863,29 +2946,36 @@ String getHTML() {
     function updateStatusDisplay(data) {
       // WiFi
       const wifiDot = document.getElementById('dotWifi');
-      document.getElementById('statusWifi').textContent = 
+      document.getElementById('statusWifi').textContent =
         data.wifiConnected ? `WiFi: ${data.wifiRSSI} dBm` : 'WiFi: Offline';
       wifiDot.className = 'dot ' + (data.wifiConnected ? '' : 'warning');
-      
+
       // LTE
       const lteDot = document.getElementById('dotLTE');
-      document.getElementById('statusLTE').textContent = 
-        data.lteConnected ? `LTE: ${data.lteSignal}/31` : 'LTE: Offline';
+      document.getElementById('statusLTE').textContent =
+        data.lteConnected ? `LTE: ${data.lteSignal}/31 CSQ` : 'LTE: Offline';
       lteDot.className = 'dot ' + (data.lteConnected ? '' : 'warning');
-      
+
       // System
       const uptime = formatUptime(data.uptime);
       document.getElementById('statusUptime').textContent = `Uptime: ${uptime}`;
-      
+
+      // Uptime Card (10. Card für 2x5 Grid)
+      document.getElementById('uptimeValue').textContent = uptime;
+      const connectionStatus = data.wifiConnected ? 'WiFi' : (data.lteConnected ? 'LTE' : 'Offline');
+      const connectionColor = data.wifiConnected || data.lteConnected ? 'OK' : 'OFFLINE';
+      document.getElementById('uptimeConnection').textContent = connectionStatus;
+      document.getElementById('cardUptime').className = 'card ' + (connectionColor === 'OK' ? 'ok' : 'warning');
+
       // Info-Felder
       document.getElementById('wifiRSSI').textContent = data.wifiRSSI + ' dBm';
-      document.getElementById('lteSignal').textContent = data.lteSignal + '/31';
+      document.getElementById('lteSignal').textContent = data.lteSignal + '/31 CSQ';
       document.getElementById('lteOperator').textContent = data.lteOperator || '--';
       document.getElementById('publicIP').textContent = data.publicIP || '--';
       document.getElementById('firmware').textContent = 'v' + data.firmware;
       document.getElementById('freeHeap').textContent = Math.round(data.freeHeap / 1024) + ' KB';
       document.getElementById('sdCard').textContent = data.sdCard ? 'OK' : 'Fehlt';
-      document.getElementById('dailyAlarms').textContent = data.dailyAlarms;
+      document.getElementById('dailyAlarms').textContent = data.dailyAlarms + ' x';
     }
     
     function updateCharts(data) {
@@ -2908,6 +2998,14 @@ String getHTML() {
       qualityChart.data.datasets[1].data = data.do || [];
       qualityChart.data.datasets[2].data = data.tds || [];
       qualityChart.update('none');
+
+      // Turbine Chart (v1.6.2)
+      if (data.flowRate && data.turbinePower) {
+        powerChart.data.labels = labels;
+        powerChart.data.datasets[0].data = data.flowRate;
+        powerChart.data.datasets[1].data = data.turbinePower;
+        powerChart.update('none');
+      }
     }
     
     function formatUptime(seconds) {
