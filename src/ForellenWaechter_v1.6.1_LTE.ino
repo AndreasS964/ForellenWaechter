@@ -2599,7 +2599,7 @@ String getHTML() {
         </div>
         <div class="info-row">
           <span class="info-label">LTE Signal</span>
-          <span class="info-value" id="lteSignal">--/31</span>
+          <span class="info-value" id="lteSignal">-- CSQ</span>
         </div>
         <div class="info-row">
           <span class="info-label">Operator</span>
@@ -2610,12 +2610,12 @@ String getHTML() {
           <span class="info-value" id="publicIP">--</span>
         </div>
       </div>
-      
+
       <div class="info-card">
         <h3>⚙️ System</h3>
         <div class="info-row">
           <span class="info-label">Firmware</span>
-          <span class="info-value" id="firmware">v1.5.0</span>
+          <span class="info-value" id="firmware">v1.6.2</span>
         </div>
         <div class="info-row">
           <span class="info-label">Free Heap</span>
@@ -2627,7 +2627,7 @@ String getHTML() {
         </div>
         <div class="info-row">
           <span class="info-label">Alarme heute</span>
-          <span class="info-value" id="dailyAlarms">0</span>
+          <span class="info-value" id="dailyAlarms">0 x</span>
         </div>
       </div>
       
@@ -2863,29 +2863,29 @@ String getHTML() {
     function updateStatusDisplay(data) {
       // WiFi
       const wifiDot = document.getElementById('dotWifi');
-      document.getElementById('statusWifi').textContent = 
+      document.getElementById('statusWifi').textContent =
         data.wifiConnected ? `WiFi: ${data.wifiRSSI} dBm` : 'WiFi: Offline';
       wifiDot.className = 'dot ' + (data.wifiConnected ? '' : 'warning');
-      
+
       // LTE
       const lteDot = document.getElementById('dotLTE');
-      document.getElementById('statusLTE').textContent = 
-        data.lteConnected ? `LTE: ${data.lteSignal}/31` : 'LTE: Offline';
+      document.getElementById('statusLTE').textContent =
+        data.lteConnected ? `LTE: ${data.lteSignal}/31 CSQ` : 'LTE: Offline';
       lteDot.className = 'dot ' + (data.lteConnected ? '' : 'warning');
-      
+
       // System
       const uptime = formatUptime(data.uptime);
       document.getElementById('statusUptime').textContent = `Uptime: ${uptime}`;
-      
+
       // Info-Felder
       document.getElementById('wifiRSSI').textContent = data.wifiRSSI + ' dBm';
-      document.getElementById('lteSignal').textContent = data.lteSignal + '/31';
+      document.getElementById('lteSignal').textContent = data.lteSignal + '/31 CSQ';
       document.getElementById('lteOperator').textContent = data.lteOperator || '--';
       document.getElementById('publicIP').textContent = data.publicIP || '--';
       document.getElementById('firmware').textContent = 'v' + data.firmware;
       document.getElementById('freeHeap').textContent = Math.round(data.freeHeap / 1024) + ' KB';
       document.getElementById('sdCard').textContent = data.sdCard ? 'OK' : 'Fehlt';
-      document.getElementById('dailyAlarms').textContent = data.dailyAlarms;
+      document.getElementById('dailyAlarms').textContent = data.dailyAlarms + ' x';
     }
     
     function updateCharts(data) {
