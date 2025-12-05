@@ -2,7 +2,7 @@
 
 **ESP32-basiertes IoT-Monitoring-System für Forellenzucht**
 
-![Version](https://img.shields.io/badge/Version-1.6.1-blue)
+![Version](https://img.shields.io/badge/Version-1.6.2-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Platform](https://img.shields.io/badge/Platform-ESP32-red)
 ![LTE](https://img.shields.io/badge/LTE-Remote-orange)
@@ -20,7 +20,20 @@ ForellenWächter ist ein umfassendes Monitoring-System für Forellenaufzuchtanla
 **Stromversorgung:** Autark mit Wasserkraft-Turbine ⚡💧
 **Fernzugriff:** Telegram Bot + DynDNS 📱🌐 **NEU in v1.6.1!**
 
-### ✨ Features v1.6.1 - Remote Control Edition
+> **⚠️ v1.6.2 Bugfix-Release:** Kritische Bugfixes für v1.6.1 - Telegram/DynDNS funktionieren jetzt, Watchdog-Timeouts gefixt, UI vervollständigt!
+
+### ✨ Features v1.6.2 - Bugfix & UI Release
+
+**🐛 GEFIXT in v1.6.2:**
+| Problem | Status |
+|---------|--------|
+| 🔴 **Telegram/DynDNS fehlten in loop()** | ✅ Beide jetzt funktional |
+| 🔴 **Watchdog Timeout** | ✅ WDT Resets hinzugefügt |
+| 🔴 **Compiler Error** | ✅ Forward Declaration gefixt |
+| 🟡 **O₂ Chart unsichtbar** | ✅ JSON-Parsing gefixt |
+| 📱 **Dashboard UI** | ✅ Turbine/Batterie Cards hinzugefügt |
+| ⚙️ **Settings UI** | ✅ "Remote" Tab hinzugefügt |
+| 📉 **Memory** | ✅ char[] statt String für Alarme |
 
 **🆕 NEU in v1.6.1:**
 | Feature | Beschreibung |
@@ -65,7 +78,8 @@ ForellenWächter ist ein umfassendes Monitoring-System für Forellenaufzuchtanla
 
 | Version | Anwendung | Features |
 |---------|-----------|----------|
-| **v1.6.1 Remote** | Wasserkraft + Fernzugriff | 📱 Telegram Bot + 🌐 DynDNS (kostenlos!) |
+| **v1.6.2 Stable** | Wasserkraft + Fernzugriff | 🐛 Kritische Bugfixes, UI vervollständigt, Watchdog gefixt |
+| **v1.6.1 Remote** | Wasserkraft + Fernzugriff | 📱 Telegram Bot + 🌐 DynDNS (teilweise nicht funktional) |
 | **v1.6 Turbine** | Wasserkraft + Remote | ⚡ Turbine, Flow & Power Monitor, Batterie-Status |
 | **v1.5 LTE** | Netzbetrieb + Remote | Settings-Seite, Fischarten-Presets, 3-Modi Relays, Wetter |
 | **v1.4 LTE** | Netzbetrieb + Remote | LTE, E-Mail, DO-Sensor, OTA, Kalibrierung |

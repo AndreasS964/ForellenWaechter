@@ -1,8 +1,17 @@
 /*
  * ═══════════════════════════════════════════════════════════════════════════════════
- * ForellenWächter v1.6.1 - Remote Control Edition
+ * ForellenWächter v1.6.2 - Stable Release
  * IoT Monitoring System mit Telegram Bot & DynDNS für Forellenzucht
  * ═══════════════════════════════════════════════════════════════════════════════════
+ *
+ * BUGFIXES in v1.6.2:
+ * - 🔴 Telegram & DynDNS Loop-Handler implementiert (waren nicht aktiv!)
+ * - 🔴 ESP32 Watchdog Timeout gefixt (WDT Resets hinzugefügt)
+ * - 🔴 Compiler Error gefixt (turbinePulseISR Forward Declaration)
+ * - 🟡 O₂ Chart JSON-Parsing Bug gefixt
+ * - 📱 Dashboard UI: Turbine/Batterie Cards hinzugefügt
+ * - ⚙️ Settings UI: "Remote" Tab hinzugefügt
+ * - 📉 Memory: String → char[] für Alarm-Handling
  *
  * NEU in v1.6.1:
  * - 📱 Telegram Bot (optional) - Fernsteuerung & Push-Alarme
@@ -68,7 +77,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════════
 
 // --- Betriebsmodus ---
-#define FIRMWARE_VERSION "1.6.1"     // Firmware-Version
+#define FIRMWARE_VERSION "1.6.2"     // Firmware-Version
 #define TEST_MODE false              // Fake-Werte für Tests
 #define DEBUG_MODE true              // Serial-Ausgabe
 #define WATCHDOG_TIMEOUT 120         // Sekunden
@@ -2050,7 +2059,7 @@ String getHTML() {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ForellenWächter v1.6.1</title>
+  <title>ForellenWächter v1.6.2</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐟</text></svg>">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
