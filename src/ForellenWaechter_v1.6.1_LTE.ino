@@ -419,7 +419,7 @@ void setup() {
 void printBanner() {
   Serial.println("\n");
   Serial.println("╔══════════════════════════════════════════════════════╗");
-  Serial.println("║   🐟 ForellenWächter v1.5 - LTE Remote Edition       ║");
+  Serial.println("║   🐟 ForellenWächter v1.6.2 - Stable Edition         ║");
   Serial.println("║   IoT Monitoring System für Aquakultur              ║");
   Serial.println("╚══════════════════════════════════════════════════════╝\n");
   
@@ -2565,6 +2565,13 @@ String getHTML() {
         <div class="label">Batterie</div>
         <div class="range" id="batteryPercent">-- %</div>
       </div>
+
+      <div class="card" id="cardUptime">
+        <div class="icon">⏱️</div>
+        <div class="value" id="uptimeValue" style="font-size: 1.8em;">--</div>
+        <div class="label">Uptime</div>
+        <div class="range" id="uptimeConnection">--</div>
+      </div>
     </div>
     
     <div class="charts-section">
@@ -2676,7 +2683,7 @@ String getHTML() {
     </div>
 
     <footer>
-      ForellenWächter v1.5 LTE Edition •
+      ForellenWächter v1.6.2 Stable Edition •
       <a href="/api/sensors">API</a> •
       © 2024 Andreas Sika
     </footer>
@@ -2881,6 +2888,13 @@ String getHTML() {
       // System
       const uptime = formatUptime(data.uptime);
       document.getElementById('statusUptime').textContent = `Uptime: ${uptime}`;
+
+      // Uptime Card (10. Card für 2x5 Grid)
+      document.getElementById('uptimeValue').textContent = uptime;
+      const connectionStatus = data.wifiConnected ? 'WiFi' : (data.lteConnected ? 'LTE' : 'Offline');
+      const connectionColor = data.wifiConnected || data.lteConnected ? 'OK' : 'OFFLINE';
+      document.getElementById('uptimeConnection').textContent = connectionStatus;
+      document.getElementById('cardUptime').className = 'card ' + (connectionColor === 'OK' ? 'ok' : 'warning');
 
       // Info-Felder
       document.getElementById('wifiRSSI').textContent = data.wifiRSSI + ' dBm';
