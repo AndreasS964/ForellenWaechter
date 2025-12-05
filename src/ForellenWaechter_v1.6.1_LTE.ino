@@ -312,6 +312,8 @@ struct HistoryBuffer {
   float ph[HISTORY_SIZE];
   float tds[HISTORY_SIZE];
   float dissolvedOxygen[HISTORY_SIZE];
+  float flowRate[HISTORY_SIZE];      // v1.6 Turbine
+  float turbinePower[HISTORY_SIZE];  // v1.6 Turbine
   unsigned long timestamp[HISTORY_SIZE];
   int index = 0;
   bool full = false;
@@ -1302,8 +1304,10 @@ void updateHistory() {
   history.ph[history.index] = sensors.ph;
   history.tds[history.index] = sensors.tds;
   history.dissolvedOxygen[history.index] = sensors.dissolvedOxygen;
+  history.flowRate[history.index] = sensors.flowRate;           // v1.6
+  history.turbinePower[history.index] = sensors.turbinePower;   // v1.6
   history.timestamp[history.index] = millis();
-  
+
   history.index = (history.index + 1) % HISTORY_SIZE;
   if (history.index == 0) {
     history.full = true;
@@ -1671,8 +1675,30 @@ void handleAPIHistory() {
     json += "]";  // DO-Array schließen
   }
 
+  // Flow Rate Array (v1.6)
+  if (ENABLE_TURBINE) {
+    json += ",\"flowRate\":[";
+    for (int i = 0; i < count; i += 3) {
+      int idx = (start + i) % HISTORY_SIZE;
+      if (i > 0) json += ",";
+      json += String(history.flowRate[idx], 1);
+    }
+    json += "]";
+  }
+
+  // Turbine Power Array (v1.6)
+  if (ENABLE_TURBINE) {
+    json += ",\"turbinePower\":[";
+    for (int i = 0; i < count; i += 3) {
+      int idx = (start + i) % HISTORY_SIZE;
+      if (i > 0) json += ",";
+      json += String(history.turbinePower[idx], 1);
+    }
+    json += "]";
+  }
+
   json += "}";
-  
+
   server.send(200, "application/json", json);
 }
 
@@ -2600,6 +2626,19 @@ String getHTML() {
           <canvas id="qualityChart"></canvas>
         </div>
       </div>
+
+      <div class="chart-card">
+        <h3>
+          ⚡ Turbine & Power
+          <div class="chart-tabs">
+            <button class="chart-tab active" onclick="setRange('power', 24)">24h</button>
+            <button class="chart-tab" onclick="setRange('power', 168)">7d</button>
+          </div>
+        </h3>
+        <div class="chart-container">
+          <canvas id="powerChart"></canvas>
+        </div>
+      </div>
     </div>
     
     <div class="system-grid">
@@ -2690,7 +2729,7 @@ String getHTML() {
   </div>
   
   <script>
-    let tempChart, qualityChart;
+    let tempChart, qualityChart, powerChart;
     let relayModes = [2, 2, 2, 0];  // 0=Auto, 1=An, 2=Aus
     
     // Charts initialisieren
@@ -2778,8 +2817,40 @@ String getHTML() {
           }
         }
       });
+
+      powerChart = new Chart(document.getElementById('powerChart'), {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'Durchfluss (L/min)',
+            data: [],
+            borderColor: '#0ea5e9',
+            backgroundColor: 'rgba(14,165,233,0.1)',
+            yAxisID: 'y',
+            tension: 0.4,
+            borderWidth: 2
+          }, {
+            label: 'Leistung (W)',
+            data: [],
+            borderColor: '#f59e0b',
+            backgroundColor: 'rgba(245,158,11,0.1)',
+            yAxisID: 'y1',
+            tension: 0.4,
+            borderWidth: 2
+          }]
+        },
+        options: {
+          ...defaultOptions,
+          scales: {
+            ...defaultOptions.scales,
+            y: { ...defaultOptions.scales.y, position: 'left', min: 0, title: { display: true, text: 'Durchfluss (L/min)', color: 'rgba(255,255,255,0.6)' } },
+            y1: { ...defaultOptions.scales.y, position: 'right', min: 0, grid: { display: false }, title: { display: true, text: 'Leistung (W)', color: 'rgba(255,255,255,0.6)' } }
+          }
+        }
+      });
     }
-    
+
     // Daten abrufen
     async function fetchSensors() {
       try {
@@ -2927,6 +2998,14 @@ String getHTML() {
       qualityChart.data.datasets[1].data = data.do || [];
       qualityChart.data.datasets[2].data = data.tds || [];
       qualityChart.update('none');
+
+      // Turbine Chart (v1.6.2)
+      if (data.flowRate && data.turbinePower) {
+        powerChart.data.labels = labels;
+        powerChart.data.datasets[0].data = data.flowRate;
+        powerChart.data.datasets[1].data = data.turbinePower;
+        powerChart.update('none');
+      }
     }
     
     function formatUptime(seconds) {
