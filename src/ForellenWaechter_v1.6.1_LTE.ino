@@ -2240,16 +2240,21 @@ String getHTML() {
     .card .value {
       font-size: 2.5em;
       font-weight: 700;
+    }
+
+    .card .value > span:not(.unit) {
       background: linear-gradient(135deg, #fff, rgba(255,255,255,0.8));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
     }
-    
+
     .card .unit {
       font-size: 0.8em;
       opacity: 0.7;
       font-weight: 300;
+      color: rgba(255,255,255,0.9);
+      margin-left: 0.2em;
     }
     
     .card .label {
