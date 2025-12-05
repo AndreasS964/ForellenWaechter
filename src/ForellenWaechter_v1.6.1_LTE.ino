@@ -2592,11 +2592,11 @@ String getHTML() {
         <div class="range" id="batteryPercent">-- %</div>
       </div>
 
-      <div class="card" id="cardUptime">
-        <div class="icon">⏱️</div>
-        <div class="value" id="uptimeValue" style="font-size: 1.8em;">--</div>
-        <div class="label">Uptime</div>
-        <div class="range" id="uptimeConnection">--</div>
+      <div class="card" id="cardWaterVolume">
+        <div class="icon">💧</div>
+        <div class="value"><span id="waterVolume">--</span><span class="unit">L</span></div>
+        <div class="label">Wassermenge</div>
+        <div class="range">24h Total</div>
       </div>
     </div>
     
@@ -2960,13 +2960,6 @@ String getHTML() {
       const uptime = formatUptime(data.uptime);
       document.getElementById('statusUptime').textContent = `Uptime: ${uptime}`;
 
-      // Uptime Card (10. Card für 2x5 Grid)
-      document.getElementById('uptimeValue').textContent = uptime;
-      const connectionStatus = data.wifiConnected ? 'WiFi' : (data.lteConnected ? 'LTE' : 'Offline');
-      const connectionColor = data.wifiConnected || data.lteConnected ? 'OK' : 'OFFLINE';
-      document.getElementById('uptimeConnection').textContent = connectionStatus;
-      document.getElementById('cardUptime').className = 'card ' + (connectionColor === 'OK' ? 'ok' : 'warning');
-
       // Info-Felder
       document.getElementById('wifiRSSI').textContent = data.wifiRSSI + ' dBm';
       document.getElementById('lteSignal').textContent = data.lteSignal + '/31 CSQ';
@@ -3005,6 +2998,15 @@ String getHTML() {
         powerChart.data.datasets[0].data = data.flowRate;
         powerChart.data.datasets[1].data = data.turbinePower;
         powerChart.update('none');
+
+        // Wassermenge 24h berechnen (flowRate in L/min, jeder Sample = 5 min)
+        let totalVolume = 0;
+        data.flowRate.forEach(rate => {
+          totalVolume += rate * 5;  // L/min × 5 min
+        });
+        document.getElementById('waterVolume').textContent = totalVolume >= 1000
+          ? (totalVolume / 1000).toFixed(1) + 'k'
+          : Math.round(totalVolume);
       }
     }
     
