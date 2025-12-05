@@ -4,6 +4,117 @@ Alle Änderungen am ForellenWächter Projekt.
 
 ---
 
+## [1.6.2] - 2024-12-05
+
+### 🐛 Bugfix & Optimierungs-Release
+
+**Kritische Bugfixes + UI-Vervollständigung + Performance-Optimierungen**
+
+#### Gefixt
+
+- **🔴 KRITISCH: Telegram & DynDNS fehlten in loop()**
+  - handleTelegramMessages() war dokumentiert aber nie aufgerufen
+  - updateDynDNS() war dokumentiert aber nie aufgerufen
+  - Bot-Initialisierung in setup() fehlte
+  - Beide Features waren komplett nicht funktional trotz Doku
+
+- **🔴 KRITISCH: ESP32 Watchdog Timeout**
+  - sendATCommand(): WDT reset alle 5s in while-Schleife (Zeile 709-712)
+  - sendHTTPRequest(): WDT resets nach HTTPINIT, HTTPDATA, HTTPACTION (bis 23s!)
+  - initLTE(): WDT resets nach allen längeren Operationen
+  - getTimestamp()/getDateString(): Timeout 1000ms hinzugefügt (vorher unendlich!)
+  - handleTelegramMessages(): WDT reset vor getUpdates() und in Loop
+  - updateDynDNS(): setTimeout(10000) + WDT resets vor/nach GET
+  - Problem: Modul hat sich nach ~120s selbst resettet
+
+- **🔴 Compiler-Error: turbinePulseISR Forward Declaration**
+  - initPins() rief turbinePulseISR auf bevor es definiert war
+  - Forward Declaration `void IRAM_ATTR turbinePulseISR();` hinzugefügt
+  - Code konnte nicht kompilieren
+
+- **🟡 O₂ Chart nicht sichtbar**
+  - JSON-Parsing Bug in handleAPIHistory()
+  - TDS-Array wurde nicht geschlossen wenn ENABLE_DO_SENSOR = false
+  - Ungültiges JSON führte zu fehlender O₂-Linie im Diagramm
+
+- **🟡 Doppelter server.handleClient() Aufruf**
+  - Zweiter redundanter Aufruf in loop() entfernt (war bei Zeile 1456)
+
+- **🟡 Inkonsistente Firmware-Version**
+  - Zentrales `#define FIRMWARE_VERSION "1.6.1"` erstellt
+  - Alle Versionsnummern verwenden jetzt dieses Define
+  - Serial-Output korrigiert: "v1.5" → "v1.6.1"
+
+#### Optimiert
+
+- **📉 Memory-Optimierung: String → char[] für Alarm-Handling**
+  - checkAlarms() nutzt jetzt `char reasons[256]` statt `String reasons`
+  - snprintf() + strncat() statt String-Konkatenation (8x `+=`)
+  - Reduziert Heap-Fragmentierung auf ESP32
+  - Nur 1x String-Zuweisung am Ende statt 8x während Loop
+
+- **✅ Batterie-Averaging bereits vorhanden**
+  - 10 ADC Samples mit Durchschnitt (Zeile 1043-1048)
+  - Keine Änderung nötig
+
+- **✅ Flow-Sensor Debouncing nicht nötig**
+  - Hall-Sensoren haben keinen Bounce
+  - Keine Änderung nötig
+
+#### UI Hinzugefügt
+
+- **Dashboard: 3 neue Sensor-Cards**
+  - ⚡ Durchfluss (L/min) - Turbine Flow Rate
+  - 🔌 Leistung (W) - Turbine Power
+  - 🔋 Batterie (V + %) - Spannung & Prozent
+  - Card-Status: Grün/Gelb/Rot je nach Werten
+
+- **Settings: Neuer "Remote" Tab**
+  - 📱 Telegram Bot Setup-Anleitung
+    * Bot-Erstellung via @BotFather erklärt
+    * Alle Befehle dokumentiert
+    * Status-Anzeige (aktiv/deaktiviert)
+  - 🌐 DynDNS (DuckDNS) Setup-Anleitung
+    * Schritt-für-Schritt Anleitung
+    * Port-Forwarding Hinweise
+    * CG-NAT Warnung
+    * Domain-Anzeige
+
+- **JavaScript updateSensorDisplay() erweitert**
+  - Conditional Rendering für Turbine & Batterie
+  - `if (data.flowRate !== undefined)` check
+  - Automatisches Card-Status-Update
+
+#### Geändert
+
+- HTML Title: "v1.5" → "v1.6.1"
+- Firmware-Version zentralisiert in #define
+
+#### Technische Details
+
+- **Watchdog Timeout**: 120 Sekunden
+- **Kritischste Operation**: AT+HTTPACTION=1 (15s)
+- **getLocalTime() ohne Timeout**: Potentiell unendliches Blockieren!
+- **Memory**: char buffer[256] statt String (Stack statt Heap)
+- **ISR**: IRAM_ATTR Forward Declaration erforderlich
+
+#### Betroffene Dateien
+
+- `src/ForellenWaechter_v1.6.1_LTE.ino` - Alle Bugfixes + UI
+- `CHANGELOG.md` - Dieses Changelog
+
+#### Wichtig
+
+- **v1.6.1 ohne diesen Patch** war nicht funktionsfähig:
+  - Telegram Bot nicht aktiv (trotz Doku)
+  - DynDNS nicht aktiv (trotz Doku)
+  - Watchdog Resets nach ~2 Minuten
+  - O₂ Chart nicht sichtbar
+  - Code konnte nicht kompilieren
+- **v1.6.2 ist die erste funktionale Version mit allen v1.6.1 Features!**
+
+---
+
 ## [1.6.1] - 2024-12-03
 
 ### 📱 Remote Control Edition - Kostenloser Fernzugriff!
