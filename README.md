@@ -242,7 +242,7 @@ Das neue v1.4 Dashboard mit Glassmorphism-Design:
 const char* EMAIL_WEBHOOK_URL = "https://maker.ifttt.com/trigger/forellen_alarm/with/key/DEIN_KEY";
 ```
 
-Ausführlich: [docs/V1.4_LTE_GUIDE.md](docs/V1.4_LTE_GUIDE.md)
+Ausführlich: [docs/LTE.md](docs/LTE.md)
 
 ---
 
@@ -308,8 +308,10 @@ ForellenWaechter/
 │   ├── INSTALLATION.md
 │   ├── HARDWARE.md
 │   ├── API.md
-│   ├── V1.4_LTE_GUIDE.md                   # NEU
-│   ├── ROADMAP.md                          # NEU
+│   ├── LTE.md                              # LTE Setup Guide
+│   ├── TELEGRAM_SETUP.md                   # Telegram Bot Setup
+│   ├── DYNDNS_SETUP.md                     # DynDNS Setup
+│   ├── ROADMAP.md
 │   └── TROUBLESHOOTING.md
 └── examples/
     └── sensor_test.ino
