@@ -2592,10 +2592,17 @@ String getHTML() {
         <div class="range" id="batteryPercent">-- %</div>
       </div>
 
-      <div class="card" id="cardWaterVolume">
-        <div class="icon">💧</div>
-        <div class="value"><span id="waterVolume">--</span><span class="unit">L</span></div>
-        <div class="label">Wassermenge</div>
+      <div class="card" id="cardQualityScore">
+        <div class="icon">⭐</div>
+        <div class="value"><span id="qualityScore">--</span><span class="unit">%</span></div>
+        <div class="label">Wasser-Score</div>
+        <div class="range">Qualität</div>
+      </div>
+
+      <div class="card" id="cardEnergy">
+        <div class="icon">⚡</div>
+        <div class="value"><span id="energy24h">--</span><span class="unit">Wh</span></div>
+        <div class="label">Energie</div>
         <div class="range">24h Total</div>
       </div>
     </div>
@@ -2897,6 +2904,63 @@ String getHTML() {
         document.getElementById('batteryPercent').textContent = Math.round(data.batteryPercent) + ' %';
       }
 
+      // Wasserqualitäts-Score berechnen (0-100%)
+      let scoreTotal = 0;
+      let scoreCount = 0;
+
+      // pH Score (Optimal: 6.5-8.5)
+      if (data.ph >= 6.5 && data.ph <= 8.5) {
+        scoreTotal += 100;
+      } else if (data.ph >= 6.0 && data.ph <= 9.0) {
+        scoreTotal += 60;
+      } else {
+        scoreTotal += 20;
+      }
+      scoreCount++;
+
+      // TDS Score (Optimal: <400 ppm)
+      if (data.tds < 400) {
+        scoreTotal += 100;
+      } else if (data.tds < 500) {
+        scoreTotal += 70;
+      } else {
+        scoreTotal += 30;
+      }
+      scoreCount++;
+
+      // DO Score (Optimal: >9 mg/L)
+      if (data.dissolvedOxygen > 9) {
+        scoreTotal += 100;
+      } else if (data.dissolvedOxygen > 6) {
+        scoreTotal += 70;
+      } else {
+        scoreTotal += 30;
+      }
+      scoreCount++;
+
+      // Temperatur Score (Optimal: 8-14°C)
+      if (data.waterTemp >= 8 && data.waterTemp <= 14) {
+        scoreTotal += 100;
+      } else if (data.waterTemp >= 6 && data.waterTemp <= 16) {
+        scoreTotal += 60;
+      } else {
+        scoreTotal += 20;
+      }
+      scoreCount++;
+
+      const qualityScore = Math.round(scoreTotal / scoreCount);
+      document.getElementById('qualityScore').textContent = qualityScore;
+
+      // Score-Card Farbe setzen
+      const scoreCard = document.getElementById('cardQualityScore');
+      if (qualityScore >= 80) {
+        scoreCard.className = 'card ok';
+      } else if (qualityScore >= 60) {
+        scoreCard.className = 'card warning';
+      } else {
+        scoreCard.className = 'card alarm';
+      }
+
       // Karten-Status
       updateCardStatus('cardWater', data.waterTemp, 8, 14, 16);
       updateCardStatus('cardPH', data.ph, 6.5, 8.5);
@@ -2999,14 +3063,19 @@ String getHTML() {
         powerChart.data.datasets[1].data = data.turbinePower;
         powerChart.update('none');
 
-        // Wassermenge 24h berechnen (flowRate in L/min, jeder Sample = 5 min)
-        let totalVolume = 0;
-        data.flowRate.forEach(rate => {
-          totalVolume += rate * 5;  // L/min × 5 min
+        // Energie 24h berechnen (Power in W, jeder Sample = 5 min = 1/12 Stunde)
+        let totalEnergy = 0;
+        data.turbinePower.forEach(power => {
+          totalEnergy += power * (5 / 60);  // W × h = Wh
         });
-        document.getElementById('waterVolume').textContent = totalVolume >= 1000
-          ? (totalVolume / 1000).toFixed(1) + 'k'
-          : Math.round(totalVolume);
+        const energyDisplay = totalEnergy >= 1000
+          ? (totalEnergy / 1000).toFixed(2) + ' k'  // kWh
+          : Math.round(totalEnergy);
+        document.getElementById('energy24h').textContent = energyDisplay;
+
+        // Einheit anpassen
+        const energyUnit = document.querySelector('#cardEnergy .unit');
+        energyUnit.textContent = totalEnergy >= 1000 ? 'Wh' : 'Wh';
       }
     }
     
